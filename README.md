@@ -1,8 +1,8 @@
 # EOAIC2 Tools Bridge
 
-让 EOAIC2 通过 Home Assistant 原生 LLM API 使用 **Tools for Assist 的网页搜索**，并在明确授权后调用其他工具。本集成独立安装和更新，提供 `eoai_tools_bridge.search_web`、只读的 `eoai_tools_bridge.list_tools`、默认关闭的 `eoai_tools_bridge.call_tool`，以及管理员使用的 `eoai_tools_bridge.check_tools` 就绪检查，无需在此配置搜索 API Key。
+让 EOAIC2 通过 Home Assistant 原生 LLM API 使用 **Tools for Assist 的搜索、天气、地点/路线、实用工具及实体历史查询**。本集成独立安装和更新，提供 `eoai_tools_bridge.search_web`、只读的 `eoai_tools_bridge.list_tools`、默认关闭的 `eoai_tools_bridge.call_tool`，以及管理员使用的 `eoai_tools_bridge.check_tools` 就绪检查，无需在此配置搜索 API Key。网页搜索以外的工具需要管理员逐项授权。
 
-适用版本：**Home Assistant Core 2026.10.x**；源码与自动化测试基准为 **2026.10.0**。开发环境需要 Python **3.14.2 或更新的 3.14 版本**。集成版本：`0.4.0`。
+适用版本：**Home Assistant Core 2026.10.x**；源码与自动化测试基准为 **2026.10.0**。开发环境需要 Python **3.14.2 或更新的 3.14 版本**。集成版本：`0.5.0`。
 
 ```text
 EOAIC2 web_search（script Function）
@@ -112,7 +112,7 @@ data: {}
 
 动作**无入参**且必须接收响应。它通过 HA 公开注册表读取当前可用工具，不执行搜索或任何其他工具。默认白名单仅含 `llm_intents/search_web`；白名单外的 API 不会被实例化。v0.3 启用通用调用后，原始管理员调用者还可发现选项中逐项授权的其他只读工具。其他调用者仍使用默认搜索清单。
 
-上游工具声明 `read_only=true, destructive=false` 时接受其声明；当前 Tools for Assist 搜索工具没有这些声明，采用固定源码审核的白名单依据。显式声明具有写入或破坏行为的工具不会出现在清单中，即使已启用副作用许可。新的只读声明也不会自动扩大白名单。
+上游工具声明 `read_only=true, destructive=false` 时接受其声明；v0.5 对 Tools for Assist 的 9 个查询组合使用固定源码审核依据，具体标识与范围见 [全工具兼容清单](docs/TOOLS_COMPATIBILITY.md)。额外审核依据要求工具公开的 integration 为 `llm_intents`。显式声明具有写入或破坏行为的工具不会出现在清单中，即使已启用副作用许可。审核与新的只读声明都不会自动扩大访问白名单。
 
 如需让 EOAIC2 查询清单，可把 [examples/eoaic2_list_tools.yaml](examples/eoaic2_list_tools.yaml) 中的完整列表项追加到现有 Functions，函数名为 `list_search_tools`。这是可选项，原有 `web_search` 可以独立使用；集成不会自动编辑或注入 EOAIC2 配置。
 
@@ -146,7 +146,7 @@ data: {}
 
 **`parameters` 描述上游工具，不扩展固定搜索动作的参数。** `search_web` 仍只接受 `query`；v0.3 的可选调用接口另见下节。清单中的描述和 Schema 都属于不可信数据，不能据此扩大模型权限或覆盖现有指令。清单只读取公开元数据，不读取 API prompt、工具实例配置或密钥；Schema 去除默认值、示例和 `x-*` 扩展字段。
 
-参数通过 `probatio.to_openapi` 的严格模式转换为 OpenAPI 3.1 Schema；转换不支持的校验器或关键词会返回错误，不输出放宽后的虚假 Schema。该转换器会求值参数默认值工厂，因此 v0.2 会在转换前拒绝带有默认值的参数声明，避免发现动作执行默认值逻辑；当前核对的搜索 Schema 不含默认值。Schema 最多 **8 KiB**、**12 层**、**256 个值节点**；不截断参数约束。API 名称和工具标题各最多 **200 字符**，工具描述最多 **2000 字符**，完整响应最多 **16 KiB**。显示文字或条目省略时 `truncated=true`。10 秒超时覆盖异步 API 获取；同步 Schema 转换无法被此超时抢占，上游 Schema 和序列化钩子仍需正常返回。
+参数通过 `probatio.to_openapi` 的严格模式转换为 OpenAPI 3.1 Schema；转换不支持的校验器或关键词会返回错误，不输出放宽后的虚假 Schema。v0.5 在转换前建立有预算的元数据视图，省略普通 `Optional` 默认值，不执行其工厂、不重新编译校验器、不修改原生 Schema；因此能发现 YouTube 搜索的默认数量和范围参数。影响必填或分组约束的默认值仍拒绝转换。Schema 最多 **8 KiB**、**12 层**、**256 个值节点**；不截断参数约束。API 名称和工具标题各最多 **200 字符**，工具描述最多 **2000 字符**，完整响应最多 **16 KiB**。显示文字或条目省略时 `truncated=true`。10 秒超时覆盖异步 API 获取；同步 Schema 转换无法被此超时抢占，上游 Schema 和序列化钩子仍需正常返回。
 
 | list_tools error_code | 含义 |
 | --- | --- |
@@ -165,7 +165,7 @@ data: {}
 
 1. 在「API/工具白名单」中填写可信配置中的确切标识，每行一项，例如 `llm_intents/search_web`。最多 32 项，区分大小写，不支持通配符、URL 或模板。
 2. 开启「启用 call_tool」。保存后立即生效；关闭开关或删除某一项会阻止后续调用，无需重载。
-3. 只有确实需要写入、破坏性或未声明只读的工具时，才开启「允许副作用及未声明只读的工具」。该开关仅适用于白名单内的工具。已经审核的 `llm_intents/search_web` 无需开启它；其他未声明工具不会仅凭名称被认定只读。
+3. 只有确实需要写入、破坏性或没有只读依据的工具时，才开启「允许副作用或无只读依据的工具」。该开关仅适用于白名单内的工具。v0.5 已审核的 9 个 Tools for Assist 查询组合无需开启它；计算器、媒体播放和未知工具仍保守处理。
 
 **所有 `call_tool` 调用都要求原始 Context 中存在 HA 实际认证存储里的有效管理员用户。** 缺少 `user_id`、普通用户、未知用户或停用账号会返回 `permission_denied`。桥接不会补造管理员或语音设备身份。语音和自动化若没有管理员 Context，不能调用此接口；可继续使用原有 `search_web` 和既有设备控制 Functions。
 
@@ -273,6 +273,25 @@ data: {}
 
 如需由 EOAIC2 查询，可选追加 [examples/eoaic2_check_tools.yaml](examples/eoaic2_check_tools.yaml) 中的 `check_enabled_tools`。没有管理员用户身份的语音/自动化仍会被拒绝；原有三个 Functions 示例可继续独立使用。
 
+### 8. v0.5 Tools for Assist 查询工具
+
+在 Tools for Assist 中启用所需工具，再把其确切 API/工具组合加入桥接选项。v0.5 可在副作用许可关闭时发现、检查和调用 9 个已审核查询组合，覆盖网页、地点、路线、维基百科、YouTube、天气、单位换算、日期和实体历史。新增组合仍要求原始有效管理员身份。
+
+完整参数、上游条件及后续待补齐的工具见 [docs/TOOLS_COMPATIBILITY.md](docs/TOOLS_COMPATIBILITY.md)。当前已注册的 API/工具才会出现在清单；只有工具类型就绪不能保证后端配置有效。新增查询动作示例见 [examples/query_tools_actions.yaml](examples/query_tools_actions.yaml)。例如授权 `basic_utilities/unit_convert` 后：
+
+```yaml
+action: eoai_tools_bridge.call_tool
+data:
+  api_id: basic_utilities
+  tool_name: unit_convert
+  tool_args:
+    amount: "1 1/2"
+    from_unit: cup
+    to_unit: ml
+```
+
+EOAIC2 可继续通过第 5、6 节的清单与 `call_allowed_tool` 示例使用这些工具。桥接保留原生参数类型、可选默认值和响应数据，不复制上游工具实现；工具是否自动被模型选中需在实际对话中验收。
+
 ## 固定搜索动作契约和错误处理
 
 入参仅允许 `query`。必须为有效 Unicode 字符串，去除首尾空白后长度 **1–500 个字符**；错误类型、空字符串、超长字符串、缺少参数或额外参数均由 `probatio` 服务 Schema 拒绝。查询内容作为字面文本传给搜索工具，不能选择其他 API、工具、URL 抓取、HA 动作或执行代码。
@@ -332,15 +351,16 @@ logger:
 ```sh
 uv sync --locked --group dev --python 3.14
 uv run --no-sync python scripts/fetch_test_upstream.py
+uv run --no-sync python scripts/fetch_tools_upstream.py
 uv run --no-sync pytest -q --timeout=30
 uv run --no-sync ruff check custom_components tests scripts
 uv run --no-sync ruff format --check custom_components tests scripts
 uv run --no-sync python scripts/build_release.py
 ```
 
-首次获取依赖和上游测试文件需要联网。pytest 阶段禁止网络访问。上游下载脚本仅在 `.cache/upstream/eoaic2/` 缓存固定提交的四个文件并核对 SHA-256，生产集成不依赖它们，也不把它们打包。未运行下载脚本时，上游契约测试会明确跳过；仅运行本地桥接测试可使用 `pytest -m 'not upstream'`。
+首次获取依赖和上游测试文件需要联网。pytest 阶段禁止网络访问。两个下载脚本分别在 `.cache/upstream/eoaic2/` 和 `.cache/upstream/llm_intents/` 缓存固定提交的 4 个和 20 个文件并核对 SHA-256，生产集成不依赖它们，也不把它们打包。缺少 Tools for Assist 缓存会使对应契约测试失败并提示获取源码；旧 EOAIC2 测试保留缺失缓存时的跳过提示。完整 CI 获取两套源码，要求 0 skipped；仅运行本地桥接测试可使用 `pytest -m 'not upstream and not tools_upstream'`。
 
-自动测试使用真实 HA 配置流、选项流、认证用户、服务注册/校验、Context、LLM APIInstance、Schema 转换和 Script；工具返回值、元数据和副作用是模拟数据。上游契约测试执行未修改的 EOAIC2 `ScriptFunction`，验证搜索、清单、受控调用及就绪检查 YAML 和 `_function_result`。这些测试**不代表**真实搜索后端、实际对话模型、Assist/TTS、HACS 安装或生产重启已验收。v0.1.0–v0.3.0 实际验收由用户报告通过；v0.4.0 的实际验收另行记录。
+自动测试使用真实 HA 配置流、选项流、认证用户、服务注册/校验、Context、LLM APIInstance、Schema 转换和 Script。契约测试执行未修改的 EOAIC2 `ScriptFunction` 与 Tools for Assist 查询工具/Schema，单位换算和日期执行原版代码；网络、天气、历史数据及副作用使用模拟后端。这些测试**不代表**真实搜索后端、实际对话模型、Assist/TTS、HACS 安装或生产重启已验收。v0.1.0–v0.4.0 实际验收由用户报告通过；v0.5.0 另行验收。
 
 实际执行结果与待完成的手工验收见 [docs/TESTING.md](docs/TESTING.md)，源码核对记录见 [docs/UPSTREAM.md](docs/UPSTREAM.md)。GitHub CI 运行同一套测试、Ruff、Hassfest 和 HACS 仓库校验。
 
@@ -352,6 +372,7 @@ custom_components/eoai_tools_bridge/
   config_flow.py     无密钥的单实例配置与白名单选项
   search.py          输入校验、固定工具调用、结果规范化
   catalog.py         白名单内只读发现、公开 Schema 转换与输出限制
+  schema.py          不执行默认工厂的原生参数元数据视图
   gateway.py         原始管理员校验、原生参数验证、单次受控调度
   readiness.py       白名单状态检查，不执行工具或参数逻辑
   policy.py          明确白名单、只读依据及权限快照
@@ -364,12 +385,12 @@ custom_components/eoai_tools_bridge/
   translations/     英文及简体中文
   brand/            本地品牌图标
 examples/            EOAIC2 追加 YAML 与动作示例
-tests/               桥接测试及原版 EOAIC2 脚本契约测试
+tests/               桥接测试及原版 EOAIC2 / Tools for Assist 契约测试
 scripts/             获取测试源码、构建安装 ZIP
 docs/                兼容记录与验收清单
 .github/workflows/   持续集成
 ```
 
-v0.1 MVP 仅提供搜索；v0.2 新增只读清单；v0.3 新增明确白名单下的受控 `call_tool`；v0.4 只补充管理员就绪检查。当前版本不自动注入 EOAIC2 Functions，不自行实现其他 LLM 工具、搜索提供商、重复缓存、历史数据库或额外聊天 UI。模型是否主动选用搜索仍由 EOAIC2 的提示词和模型能力决定。
+v0.1 MVP 提供搜索；v0.2 新增只读清单；v0.3 新增明确白名单下的受控 `call_tool`；v0.4 补充管理员就绪检查；v0.5 补齐已审核查询工具及普通可选默认值的兼容。当前版本不自动注入 EOAIC2 Functions，不自行实现其他 LLM 工具、搜索提供商、重复缓存、历史数据库或额外聊天 UI。模型是否主动选用工具仍由 EOAIC2 的提示词和模型能力决定。
 
-后续继续按 0.x 小版本逐项改善配置和兼容性，不直接进入 v1.0。能力映射、完整安装向导和跨代理接入需要分别设计和验收；EOAIC2 的动态函数注册仍受上游接口限制。当前只声明 HA 2026.10.x 的目标兼容性，其他版本需要重新测试。版本变更见 [docs/CHANGELOG.md](docs/CHANGELOG.md)。
+后续继续按 0.x 小版本迭代，**Tools for Assist 的全部工具家族兼容并实际验收完成前，不发布 1.0**。计算器、媒体播放、Home Control 的动态控制/脚本与设备相关计时器均已纳入 [完整清单和版本门槛](docs/TOOLS_COMPATIBILITY.md)，不能只以网页搜索或固定工具名计数宣称全兼容。当前只声明 HA 2026.10.x 的目标兼容性，其他版本需要重新测试。版本变更见 [docs/CHANGELOG.md](docs/CHANGELOG.md)。

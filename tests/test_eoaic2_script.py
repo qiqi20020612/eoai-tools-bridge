@@ -165,6 +165,71 @@ def gateway_config(function):
     return function.validate_schema(example["function"])
 
 
+@pytest.mark.tools_upstream
+@pytest.mark.parametrize(
+    "module_name,class_name,args,expected",
+    [
+        (
+            "unit_converter",
+            "UnitConverterTool",
+            {"amount": "1 1/2", "from_unit": "cup", "to_unit": "ml"},
+            {"value": 354.8824},
+        ),
+        (
+            "date_info",
+            "DateInfoTool",
+            {"day": 10, "month": 10, "year": 2026},
+            {
+                "day": "Saturday",
+                "date": "October 10, 2026",
+                "message": "October 10, 2026 is a Saturday",
+            },
+        ),
+    ],
+)
+async def test_original_script_calls_original_tools_for_assist_utilities(
+    hass,
+    gateway_entry,
+    admin_context,
+    tools_source,
+    upstream_script_function,
+    module_name,
+    class_name,
+    args,
+    expected,
+):
+    from conftest import SearchAPI
+
+    tool = getattr(tools_source(module_name), class_name)({}, hass)
+    api = SearchAPI(hass, tool)
+    api.id = "basic_utilities"
+    unregister = llm.async_register_api(hass, api)
+    hass.config_entries.async_update_entry(
+        gateway_entry,
+        options={CONF_ENABLED: True, CONF_ALLOWED_TOOLS: f"{api.id}/{tool.name}"},
+    )
+    original = llm.LLMContext(
+        platform="extended_openai_conversation",
+        context=admin_context,
+        language="zh-Hans",
+        assistant="conversation",
+        device_id=None,
+    )
+    try:
+        response = await upstream_script_function.execute(
+            hass,
+            gateway_config(upstream_script_function),
+            {"api_id": api.id, "tool_name": tool.name, "tool_args": args},
+            original,
+            [],
+        )
+        assert response["success"] is True
+        assert response["result"] == expected
+        assert api.contexts[0].context is admin_context
+    finally:
+        unregister()
+
+
 @pytest.mark.parametrize("query", ["123", "{}", "{{ states('light.private') }}"])
 async def test_original_script_calls_allowed_tool_with_original_admin(
     hass,

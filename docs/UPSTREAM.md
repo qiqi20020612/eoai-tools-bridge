@@ -1,6 +1,6 @@
 # 上游源码核对
 
-核对日期：**2026-10-09（Asia/Shanghai）**。开发依据以下实际源码快照，未修改任何上游源码或实际 HA 安装目录。
+核对日期：**2026-10-10（Asia/Shanghai）**。开发依据以下实际源码快照，未修改任何上游源码或实际 HA 安装目录。
 
 | 项目 | 基准 | 固定提交 |
 | --- | --- | --- |
@@ -30,7 +30,7 @@ v0.2 清单使用 `async_get_apis` 枚举注册表，先过滤固定 API 白名�
 
 HA `ToolAnnotations` 的默认值为 `read_only=False, destructive=True`，代表未声明时保守处理。固定快照中的 Tools for Assist 搜索工具直接继承未声明状态；v0.2 仅对已经审核的 `llm_intents/search_web` 使用白名单依据，并在清单标记 `read_only_basis=audited_allowlist`。若上游给出独立声明，则必须同时为只读且无破坏性。`read_only=true` 不会自行扩大 API/工具白名单。
 
-v0.3 `call_tool` 使用同一公开注册/调度接口，只在当前精确白名单和原始有效管理员授权通过后取得 API。HA 2026.10.0 的 `APIInstance.async_call_tool` 不调用工具的参数 Schema，因此桥接先执行工具公开的 probatio Schema，并再次检查结果是受限 JSON 对象，再交给原生调度。Schema/default 工厂运行一次，清单仍拒绝带默认值的 Schema；调用与发现采用不同的执行边界。HA 会在 LLM trace 中记录工具名和参数，桥接自身不记录正文。
+v0.3 `call_tool` 使用同一公开注册/调度接口，只在当前精确白名单和原始有效管理员授权通过后取得 API。HA 2026.10.0 的 `APIInstance.async_call_tool` 不调用工具的参数 Schema，因此桥接先执行工具公开的 probatio Schema，并再次检查结果是受限 JSON 对象，再交给原生调度。Schema/default 工厂运行一次；v0.3 当时的清单仍拒绝带默认值的 Schema；调用与发现采用不同的执行边界。HA 会在 LLM trace 中记录工具名和参数，桥接自身不记录正文。
 
 [auth/models.py](https://github.com/home-assistant/core/blob/6a811d3359c7b2076dc9e1cf900843a129c044af/homeassistant/auth/models.py) 提供用户的 `is_active` 和 `is_admin`；桥接通过 `hass.auth.async_get_user` 查询原始 Context 用户，不靠模型参数声明身份。缺少用户或非管理员明确拒绝。测试使用真实 HA 认证存储的用户。未声明只读的工具、写入或破坏性工具需要另外启用副作用选项；注释不作为 Python 沙箱。
 
@@ -51,6 +51,14 @@ v0.4 增量复核日期为 **2026-10-10**，继续采用上述固定 HA 快照�
 - [searxng_search.py](https://github.com/skye-harris/llm_intents/blob/100e740b93a2a1a6d304329883937193a4571ac0/custom_components/llm_intents/searxng_search.py)：`title` 及字符串 `content`。
 
 以上三个后端当前都未向 LLM 返回 URL。桥接不会从标题猜测来源；若将来上游提供实际 `url`/`link`，会保留安全的原始链接。
+
+v0.5 按上述同一固定提交核对所有工具入口。API 标识为 `llm_intents`、`weather_forecast`、`media_services`、`basic_utilities` 和区分大小写的 `HomeControl`。完整的固定工具、三个网页搜索变体、HA 原生动态平台/脚本和设备相关计时器见 [TOOLS_COMPATIBILITY.md](TOOLS_COMPATIBILITY.md)。Home Control 聚合 HA Assist 平台工具，并按 Tools for Assist 的禁用列表过滤；完整范围随实际加载平台与实体暴露变化。
+
+v0.5 的开发测试通过 `scripts/fetch_tools_upstream.py` 获取 SHA-256 固定的 20 个原版工具/依赖/入口文件到忽略的缓存。namespace 仅用于测试，绕过完整集成初始化，不修改源码。只读查询测试执行原版工具参数和方法；网络、天气和 Recorder 数据获取被模拟，单位换算及日期使用原版计算代码。计算器和媒体播放目前只盘点入口，不声称其原版调用已测试。
+
+新增查询审核集合与默认访问白名单分开。只有用户明确配置的额外组合、启用通用调用、原始有效管理员身份，以及公开 `integration=llm_intents` 才能使用新增审核依据。独立的非只读/破坏性声明优先拒绝只读分类。集合不自动加入配置；默认网页搜索契约保留。
+
+参数目录对普通 Optional 默认值建立不编译的元数据视图，保留 Required、额外键策略、枚举、范围和嵌套约束，省略工厂。调用继续使用未修改的原生 Schema，因此 YouTube 的默认数量 1 和范围 1–25 只在授权参数校验时生效。Required/分组默认值及不支持的结构仍拒绝发现；不会为兼容而放宽约束。`check_tools` 继续只检查 Schema 类型，不做转换。
 
 ## EOAIC2 和 YAML 调整
 

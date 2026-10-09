@@ -10,6 +10,8 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import llm
 
 from .const import (
+    API_ID,
+    AUDITED_READ_ONLY_TOOLS,
     CATALOG_ALLOWLIST,
     CONF_ALLOW_SIDE_EFFECTS,
     CONF_ALLOWED_TOOLS,
@@ -103,10 +105,15 @@ async def async_is_admin(hass: HomeAssistant, call: ServiceCall) -> bool:
 
 
 def read_only_basis(api_id: str, tool: llm.Tool) -> str | None:
-    """Default annotations are unknown except for the audited legacy search."""
+    """Use explicit annotations or audited Tools for Assist query definitions."""
     annotations = tool.annotations
     if annotations is llm.Tool.annotations:
-        return "audited_allowlist" if (api_id, tool.name) in CATALOG_ALLOWLIST else None
+        pair = (api_id, tool.name)
+        if pair in CATALOG_ALLOWLIST or (
+            pair in AUDITED_READ_ONLY_TOOLS and tool.integration == API_ID
+        ):
+            return "audited_allowlist"
+        return None
     if (
         isinstance(annotations, llm.ToolAnnotations)
         and annotations.read_only is True

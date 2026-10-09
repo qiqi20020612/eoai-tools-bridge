@@ -23,6 +23,7 @@ from .const import (
     MAX_TITLE_LENGTH,
 )
 from .policy import async_catalog_allowlist, async_is_admin, get_policy, read_only_basis
+from .schema import parameters_without_defaults
 
 _LOGGER = logging.getLogger(__name__)
 LIST_TOOLS_SCHEMA = vol.Schema({}, extra=vol.PREVENT_EXTRA)
@@ -103,12 +104,12 @@ def serialize_parameters(instance: llm.APIInstance, tool: llm.Tool) -> dict:
                 for _ in range(MAX_CATALOG_SCHEMA_DEPTH):
                     if not isinstance(marker, vol.Marker):
                         break
-                    # The codec resolves default factories. Discovery must not
-                    # invoke them, even when a factory just produces a literal.
+                    # Also reject defaults hidden in unsupported wrappers that
+                    # the metadata-only view did not transform.
                     if not isinstance(
                         getattr(marker, "default", vol.UNDEFINED), vol.Undefined
                     ):
-                        raise ValueError("Default factories are not supported")
+                        raise ValueError("Unsupported parameter default")
                     marker = marker.schema
                 else:
                     raise ValueError("Unsupported schema marker")
@@ -117,7 +118,7 @@ def serialize_parameters(instance: llm.APIInstance, tool: llm.Tool) -> dict:
         return vol.UNSUPPORTED
 
     schema = vol.to_openapi(
-        tool.parameters,
+        parameters_without_defaults(tool.parameters),
         custom_serializer=serialize_node,
         openapi_version="3.1.0",
         strict=True,

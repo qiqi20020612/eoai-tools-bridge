@@ -53,11 +53,11 @@
     "step": {
       "init": {
         "title": "Controlled tool calls",
-        "description": "Enter trusted API/tool pairs, one per line, for example llm_intents/search_web. Maximum 32 pairs; no wildcards. Changes apply immediately. call_tool is disabled by default and requires the original active administrator identity. Voice/automation contexts without user_id cannot use it; existing web search still works. Side effects include writes, destructive tools and tools without read-only declarations. Enable only tools you intend to authorize.",
+        "description": "Enter trusted API/tool pairs, one per line, for example llm_intents/search_web. Maximum 32 pairs; no wildcards. Changes apply immediately. call_tool is disabled by default and requires the original active administrator identity. Voice/automation contexts without user_id cannot use it; existing web search still works. Audited Tools for Assist query tools need no side-effect permission. Writes, destructive tools and tools without a read-only basis require it. Enable only tools you intend to authorize.",
         "data": {
           "enabled": "Enable call_tool",
           "allowed_tools": "API/tool allowlist",
-          "allow_side_effects": "Allow side effects and unannotated tools"
+          "allow_side_effects": "Allow side effects and tools without a read-only basis"
         }
       }
     },

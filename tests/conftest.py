@@ -122,3 +122,29 @@ async def search_api(
     unregister = llm.async_register_api(hass, api)
     yield api
     unregister()
+
+
+@pytest.fixture
+def tools_source():
+    """Import immutable originals in a namespace without upstream setup."""
+    import hashlib
+    import importlib
+    import sys
+    from types import ModuleType
+
+    from scripts.fetch_tools_upstream import DESTINATION, FILES
+
+    for name, expected in FILES.items():
+        path = DESTINATION / name
+        assert path.exists(), "Run python scripts/fetch_tools_upstream.py first"
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == expected
+    prefix = "_eoai_bridge_tools_contract"
+    package = ModuleType(prefix)
+    package.__path__ = [str(DESTINATION)]
+    sys.modules[prefix] = package
+    try:
+        yield lambda name: importlib.import_module(f"{prefix}.{name}")
+    finally:
+        for name in list(sys.modules):
+            if name == prefix or name.startswith(prefix + "."):
+                sys.modules.pop(name)

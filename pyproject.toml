@@ -1,6 +1,6 @@
 [project]
 name = "eoai-tools-bridge"
-version = "0.4.0"
+version = "0.5.0"
 description = "Home Assistant search bridge and controlled LLM tool gateway for EOAIC2"
 requires-python = ">=3.14.2"
 
@@ -22,6 +22,7 @@ pythonpath = ["."]
 addopts = "--strict-markers --disable-socket --allow-unix-socket"
 markers = [
   "upstream: execute the pinned, unmodified EOAIC2 ScriptFunction with HA Core and simulated tools",
+  "tools_upstream: execute pinned Tools for Assist schemas and query tools with simulated backends",
 ]
 
 [tool.ruff]

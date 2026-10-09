@@ -300,7 +300,13 @@ async def test_parameter_default_factory_is_not_executed(
     if nested:
         schema = {vol.Required("options"): vol.Schema(schema)}
     search_tool.parameters = vol.Schema(schema)
-    assert await call_catalog(hass) == catalog_response("invalid_schema")
+    response = await call_catalog(hass)
+    assert response["success"] is True
+    properties = response["tools"][0]["parameters"]["properties"]
+    if nested:
+        properties = properties["options"]["properties"]
+    assert properties["query"] == {"type": "string"}
+    assert "private-default" not in json.dumps(response)
     factory.assert_not_called()
     search_tool.call.assert_not_called()
 

@@ -60,9 +60,23 @@ TOOL_ERROR_MESSAGES = {
     "invalid_response": "The tool returned an unsupported result format.",
 }
 
-# Audited against the pinned Tools for Assist source in docs/UPSTREAM.md.
-# An upstream read_only annotation alone never extends this allowlist.
+# The unauthenticated legacy catalog stays limited to web search.
 CATALOG_ALLOWLIST = frozenset({(API_ID, TOOL_NAME)})
+# Audited against the immutable source in docs/TOOLS_COMPATIBILITY.md. These
+# classifications grant no access: additional tools still need exact opt-in and
+# the original active administrator. Calculator and control tools stay unknown.
+AUDITED_READ_ONLY_TOOLS = CATALOG_ALLOWLIST | frozenset(
+    {
+        (API_ID, "find_places"),
+        (API_ID, "get_route"),
+        (API_ID, "search_wikipedia"),
+        (API_ID, "search_youtube"),
+        ("weather_forecast", "get_weather_forecast"),
+        ("basic_utilities", "unit_convert"),
+        ("basic_utilities", "calendar_day_info"),
+        ("HomeControl", "get_device_history_context"),
+    }
+)
 CATALOG_TIMEOUT_SECONDS = 10
 MAX_CATALOG_DESCRIPTION_LENGTH = 2000
 MAX_CATALOG_SCHEMA_BYTES = 8192

@@ -86,22 +86,61 @@ HA 服务注册/校验、配置项、认证用户、Context、LLM 注册表/APII
 
 实现提交 `7fd8bcd46bce3ca763fef9cca3e03b3f6fd28819` 的 [v0.4.0 GitHub CI](https://github.com/qiqi20020612/eoai-tools-bridge/actions/runs/37957598006) 全部通过：Ubuntu 的 **274 项测试**、Ruff、固定上游源码验证及安装包构建通过，官方 Hassfest 及 HACS 全部 9 项检查通过。后续发布记录仅修改文档；最终发布提交、CI 与安装资产见 [v0.4.0 Release](https://github.com/qiqi20020612/eoai-tools-bridge/releases/tag/v0.4.0)。
 
-## v0.4.0 尚待实际运行验收
+## v0.4.0 真实验收记录
 
-- [ ] 通过 HACS 或 Release ZIP 从 v0.3.0 更新并重启 HA，四个动作可见；已有白名单、通用调用开关与副作用许可保持原值，三个既有动作及设备控制 Functions 正常。
-- [ ] 管理员调用 `check_tools` 获得实际白名单的状态；关闭 `call_tool` 时返回 `gateway_disabled`，检查自身不启用任何许可，也不产生实际工具调用。
-- [ ] 开启后，已配置搜索工具显示 `ready`；禁用上游工具或 API 后反映 `tool_unavailable` 或 `api_unavailable`，不使用旧实例。`ready` 与真实后端及参数验证区分清楚。
-- [ ] 原始有效管理员限制正常；普通用户或无用户 Context 返回 `permission_denied`，错误入参被 HA 拒绝。
-- [ ] 可选追加 `examples/eoaic2_check_tools.yaml` 后，管理员 Context 能读取 `_function_result`；模型依据各条目状态回答，不把顶层 success 当作全部可用，也不根据检查结果扩大授权。
-- [ ] 卸载/重载后的拒绝及恢复正常；观察上游日志确认检查未触发搜索或副作用工具。
+**用户报告通过。** 用户明确回复“验收通过。继续下一个版本，注意1.0版本之前要兼容 Tools for Assist 支持的所有工具。”据此接受 v0.4.0 总体验收结论；没有逐项证据，不补写具体后端、设备、TTS 或 HACS 更新的单项结果。最终发布提交 `db574ee4065652449ef71055abb908b0ca171fa2` 的 [CI](https://github.com/qiqi20020612/eoai-tools-bridge/actions/runs/37958021421) 已通过；标签与资产保留。
+
+以下保留原定手工验收用例供追溯，不作为逐项通过证据：
+
+- 通过 HACS 或 Release ZIP 从 v0.3.0 更新并重启 HA，四个动作可见；已有白名单、通用调用开关与副作用许可保持原值，三个既有动作及设备控制 Functions 正常。
+- 管理员调用 `check_tools` 获得实际白名单的状态；关闭 `call_tool` 时返回 `gateway_disabled`，检查自身不启用任何许可，也不产生实际工具调用。
+- 开启后，已配置搜索工具显示 `ready`；禁用上游工具或 API 后反映 `tool_unavailable` 或 `api_unavailable`，不使用旧实例。`ready` 与真实后端及参数验证区分清楚。
+- 原始有效管理员限制正常；普通用户或无用户 Context 返回 `permission_denied`，错误入参被 HA 拒绝。
+- 可选追加 `examples/eoaic2_check_tools.yaml` 后，管理员 Context 能读取 `_function_result`；模型依据各条目状态回答，不把顶层 success 当作全部可用，也不根据检查结果扩大授权。
+- 卸载/重载后的拒绝及恢复正常；观察上游日志确认检查未触发搜索或副作用工具。
 
 记录验收证据时可附 HA、Tools for Assist、EOAIC2 的版本、动作响应、实际函数调用及升级方式；按原有隐私策略处理查询和日志。
+
+
+## v0.5.0 已执行的自动化检查
+
+使用相同固定依赖：Python 3.14.6、HA Core 2026.10.0、`pytest-homeassistant-custom-component==0.13.371`，无新增生产或开发第三方依赖。锁文件仅更新项目版本为 0.5.0。
+
+本地结果：**345 passed，0 skipped**。其中 **25 项**运行原版 EOAIC2 ScriptFunction，**46 项**带 Tools for Assist 源码契约标记（两类重叠 **2 项**，不能直接相加）；另有参数元数据视图与权限回归。Ruff 静态及格式检查通过。完整源码覆盖清单见 [TOOLS_COMPATIBILITY.md](TOOLS_COMPATIBILITY.md)。
+
+Tools for Assist 使用固定提交 `100e740b93a2a1a6d304329883937193a4571ac0` 的 20 个原版文件，在导入前逐个验证 SHA-256。运行 11 个查询实现的原版参数 Schema 与方法，覆盖 9 个确切 API/工具组合。入口清单同时确认计算器、媒体播放及 Home Control 的动态聚合，未据 AST 盘点宣称这些剩余工具的实际调用通过。
+
+| 范围 | 自动化证据 |
+| --- | --- |
+| 查询工具 | 三种网页搜索变体，以及地点、路线、维基百科、YouTube、天气、单位换算、日期和历史工具的 Schema、只读目录和就绪状态；错误参数阻止原版方法执行 |
+| 原版执行 | 地点/路线/维基百科/YouTube 使用模拟 HTTP JSON，网页搜索数据、天气、Recorder 数据模拟；执行原版查询方法和结果处理。单位换算和日期执行原版计算代码 |
+| 类型与数据 | 保存分数字符串及整数日期、路线嵌套结果、YouTube 链接、天气文本、历史统计/状态采样，丢弃原版工具追加的指令；2 项同时使用原版 EOAIC2 脚本和原版实用工具 |
+| 默认值与约束 | 普通 Optional 默认值发现时不求值，原生调用求值一次；保留枚举、整数范围、Required、额外键策略、嵌套/分组约束；不重新编译自定义校验器，不修改原版 Schema |
+| 拒绝与预算 | 必填/分组默认值和未知 Marker 子类拒绝发现且不求值，循环/深度/节点在转换前受限；9 个原版查询组合的完整目录和检查响应均在 16 KiB 内 |
+| 授权回归 | 审核不自动授予访问权限，追加工具仍要求精确白名单和原始有效管理员；审核来源限定 Tools for Assist，上游显式危险声明不会被覆盖，未知控制工具仍需副作用许可 |
+| 既有行为 | 原有搜索、受控调用、默认搜索清单和不执行参数逻辑的就绪检查保持通过；四个动作、选项、升级生命周期及中英文描述持续验证 |
+
+安装 ZIP 已核对：34 个文件逐字节匹配工作区，项目、锁文件和 Manifest 均为 0.5.0，JSON 与 SHA-256 校验正确，不含测试、上游源码、开发环境、缓存或凭据。8 个新增动作示例均通过原版工具 Schema 校验。GitHub CI 和最终发行记录在实际完成后补充。
+
+模拟数据与原版契约不代表真实联网、用户的 HA、实际 Assist/模型/TTS、Recorder 或物理设备已验收。
+
+## v0.5.0 尚待实际运行验收
+
+- [ ] 从 v0.4.0 经 HACS 或 Release ZIP 更新并重启；原有四个动作和已保存选项正常，既有搜索/设备控制 Functions 保持可用。
+- [ ] 在 Tools for Assist 中逐项启用所需查询工具并完成其后端配置；在桥接中逐项加入确切组合并开启通用调用，副作用许可关闭时管理员能通过目录、检查和实际调用使用这些查询工具。
+- [ ] 验证地点、路线、维基百科、YouTube、天气、单位换算、日期、实体历史的实际参数和响应；注明实际启用范围、环境缺项及版本，不能用工具类型就绪替代后端成功。
+- [ ] YouTube 省略数量时默认 1，显式数量 1–25 生效，26 被拒绝；发现/检查不发起实际查询，默认工厂不在元数据发现时运行。
+- [ ] 原始管理员限制、未加入白名单、关闭通用调用或撤销许可的拒绝正常；计算器、播放和未知工具仍按独立副作用许可处理。
+- [ ] EOAIC2 使用现有清单和 `call_allowed_tool` 示例获取实际查询结果；分数字符串、整数日期、天气文本和历史数据通过 `_function_result` 返回，实际模型选择工具的行为另行记录。
+
+1.0 前的全工具验收门槛单独维护在 [TOOLS_COMPATIBILITY.md](TOOLS_COMPATIBILITY.md)，未完成的计算器、媒体播放、动态控制/脚本与计时器继续通过后续 0.x 补齐。
 
 ## 可复现命令
 
 ```sh
 uv sync --locked --group dev --python 3.14
 uv run --no-sync python scripts/fetch_test_upstream.py
+uv run --no-sync python scripts/fetch_tools_upstream.py
 uv run --no-sync pytest -q --timeout=30
 uv run --no-sync ruff check custom_components tests scripts
 uv run --no-sync ruff format --check custom_components tests scripts

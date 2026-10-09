@@ -53,11 +53,11 @@
     "step": {
       "init": {
         "title": "受控工具调用",
-        "description": "仅填写你信任的 API/工具，每行一个，例如 llm_intents/search_web。最多 32 项，不支持通配符；保存后立即生效。call_tool 默认关闭，只接受原始有效管理员身份；没有 user_id 的语音/自动化不能使用该入口，原有搜索仍可使用。副作用许可包含写入、破坏性和未声明只读的工具，请只添加你愿意授予权限的工具。",
+        "description": "仅填写你信任的 API/工具，每行一个，例如 llm_intents/search_web。最多 32 项，不支持通配符；保存后立即生效。call_tool 默认关闭，只接受原始有效管理员身份；没有 user_id 的语音/自动化不能使用该入口，原有搜索仍可使用。副作用许可包含写入、破坏性和未声明只读的工具，请只添加你愿意授予权限的工具。 已审核的 Tools for Assist 查询工具无需副作用许可；写入、破坏性及无只读依据的工具仍需另外允许。",
         "data": {
           "enabled": "启用 call_tool",
           "allowed_tools": "API/工具白名单",
-          "allow_side_effects": "允许副作用和未声明只读的工具"
+          "allow_side_effects": "允许副作用或无只读依据的工具"
         }
       }
     },

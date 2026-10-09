@@ -1,0 +1,68 @@
+# Examples for an administrator after explicitly enabling each pair in options.
+# Enable the matching tool and configure its backend in Tools for Assist first.
+# Run one list item as a developer action, or use this list as a script sequence.
+- action: eoai_tools_bridge.call_tool
+  data:
+    api_id: basic_utilities
+    tool_name: unit_convert
+    tool_args:
+      amount: "1 1/2"
+      from_unit: cup
+      to_unit: ml
+  response_variable: converted_amount
+- action: eoai_tools_bridge.call_tool
+  data:
+    api_id: basic_utilities
+    tool_name: calendar_day_info
+    tool_args:
+      day: 10
+      month: 10
+      year: 2026
+  response_variable: calendar_day
+- action: eoai_tools_bridge.call_tool
+  data:
+    api_id: llm_intents
+    tool_name: find_places
+    tool_args:
+      query: "附近的图书馆"
+  response_variable: found_places
+- action: eoai_tools_bridge.call_tool
+  data:
+    api_id: llm_intents
+    tool_name: get_route
+    tool_args:
+      destination: "图书馆"
+      mode: WALK
+  response_variable: route
+- action: eoai_tools_bridge.call_tool
+  data:
+    api_id: llm_intents
+    tool_name: search_wikipedia
+    tool_args:
+      query: "图书馆"
+  response_variable: wikipedia
+- action: eoai_tools_bridge.call_tool
+  data:
+    api_id: llm_intents
+    tool_name: search_youtube
+    tool_args:
+      query: "图书馆介绍"
+      num_results: 2
+  response_variable: youtube
+- action: eoai_tools_bridge.call_tool
+  data:
+    api_id: weather_forecast
+    tool_name: get_weather_forecast
+    tool_args:
+      range: tomorrow
+  response_variable: weather
+- action: eoai_tools_bridge.call_tool
+  data:
+    api_id: HomeControl
+    tool_name: get_device_history_context
+    tool_args:
+      name: "厨房温度"
+      domain: sensor
+      start_date_time: "2026-10-09 08:00"
+      end_date_time: "2026-10-09 09:00"
+  response_variable: device_history
