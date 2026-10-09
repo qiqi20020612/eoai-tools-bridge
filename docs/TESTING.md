@@ -82,7 +82,9 @@ HA 服务注册/校验、配置项、认证用户、Context、LLM 注册表/APII
 | 隐私与预算 | 不输出标题/描述/API prompt/私有配置/异常原文，完整 32 项最长标识仍在 16 KiB 内；预算不足时省略完整条目，不截断标识 |
 | 升级与接线 | 原有测试持续通过，四个动作只注册一次、单个缺失动作单独补注册，卸载/重载/删除和动态元数据变化不缓存；原版 EOAIC2 检查 YAML 及中英文动作描述 |
 
-安装 ZIP 已检查：31 个文件与工作区逐字节一致，Manifest、项目及锁文件版本一致，JSON 元数据与 SHA-256 正确，无开发环境、测试源码、上游源码或缓存。本版本 GitHub CI 尚待提交后运行；不沿用 v0.3.0 的结果作为 v0.4.0 的通过依据。
+安装 ZIP 已检查：31 个文件与工作区逐字节一致，Manifest、项目及锁文件版本一致，JSON 元数据与 SHA-256 正确，无开发环境、测试源码、上游源码或缓存。
+
+实现提交 `7fd8bcd46bce3ca763fef9cca3e03b3f6fd28819` 的 [v0.4.0 GitHub CI](https://github.com/qiqi20020612/eoai-tools-bridge/actions/runs/37957598006) 全部通过：Ubuntu 的 **274 项测试**、Ruff、固定上游源码验证及安装包构建通过，官方 Hassfest 及 HACS 全部 9 项检查通过。后续发布记录仅修改文档；最终发布提交、CI 与安装资产见 [v0.4.0 Release](https://github.com/qiqi20020612/eoai-tools-bridge/releases/tag/v0.4.0)。
 
 ## v0.4.0 尚待实际运行验收
 
