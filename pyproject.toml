@@ -1,6 +1,6 @@
 [project]
 name = "eoai-tools-bridge"
-version = "0.3.0"
+version = "0.4.0"
 description = "Home Assistant search bridge and controlled LLM tool gateway for EOAIC2"
 requires-python = ">=3.14.2"
 

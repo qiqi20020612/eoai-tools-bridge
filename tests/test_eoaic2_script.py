@@ -266,3 +266,54 @@ async def test_original_script_handles_disabled_and_invalid_args(
     )
     assert response["error_code"] == ("invalid_args" if enabled else "gateway_disabled")
     search_tool.call.assert_not_called()
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+@pytest.mark.parametrize("administrator", [False, True])
+async def test_original_script_checks_tool_readiness_without_execution(
+    hass,
+    gateway_entry,
+    search_api,
+    search_tool,
+    upstream_script_function,
+    admin_context,
+    enabled,
+    administrator,
+):
+    hass.config_entries.async_update_entry(
+        gateway_entry,
+        options={CONF_ENABLED: enabled, CONF_ALLOWED_TOOLS: f"{API_ID}/{TOOL_NAME}"},
+    )
+    example = yaml.safe_load((ROOT / "examples/eoaic2_check_tools.yaml").read_text())[0]
+    assert example["spec"]["name"] == "check_enabled_tools"
+    assert example["spec"]["parameters"]["properties"] == {}
+    source = None
+    if administrator:
+        source = llm.LLMContext(
+            platform="extended_openai_conversation",
+            context=admin_context,
+            language="zh-Hans",
+            assistant="conversation",
+            device_id="voice-device",
+        )
+    response = await upstream_script_function.execute(
+        hass,
+        upstream_script_function.validate_schema(example["function"]),
+        {},
+        source,
+        [],
+    )
+    if administrator:
+        assert response["success"] is True
+        assert response["tools"][0]["status"] == (
+            "ready" if enabled else "gateway_disabled"
+        )
+        if enabled:
+            assert search_api.contexts[0].context is admin_context
+            assert search_api.contexts[0].device_id is None
+    else:
+        assert response["error_code"] == "permission_denied"
+        assert response["tools"] == []
+    if not administrator or not enabled:
+        assert search_api.contexts == []
+    search_tool.call.assert_not_called()

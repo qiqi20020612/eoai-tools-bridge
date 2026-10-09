@@ -36,6 +36,8 @@ v0.3 `call_tool` 使用同一公开注册/调度接口，只在当前精确白�
 
 [config_entries.py](https://github.com/home-assistant/core/blob/6a811d3359c7b2076dc9e1cf900843a129c044af/homeassistant/config_entries.py) 的公开 OptionsFlow 在初始化后提供 `config_entry`。桥接保留单实例配置流与版本 1，新增原生选项流；旧配置没有授权选项，通用调用默认关闭。运行时每次读取选项和已加载状态，无需维护 API 实例或额外重载缓存。
 
+v0.4 增量复核日期为 **2026-10-10**，继续采用上述固定 HA 快照。`check_tools` 仅使用 `async_get_apis`、逐项授权 API 的 `async_get_api` 和工具公开的 `name/annotations/parameters`。Schema 只做 probatio 类型检查，既不执行校验，也不调用 `to_openapi` 或自定义序列化器；因此可检查带默认值的工具而不求值默认工厂。`ready` 只描述权限及元数据的当前状态，不能替代真实工具调用或参数校验。禁用通用调用时只读注册表，不取得 APIInstance；不修改配置、扩大权限或使用缺失用户的替代身份。
+
 ## Tools for Assist
 
 [llm_functions.py](https://github.com/skye-harris/llm_intents/blob/100e740b93a2a1a6d304329883937193a4571ac0/custom_components/llm_intents/llm_functions.py) 中 `SearchAPI.id=llm_intents`。仅配置了相关工具的 API 才注册；即使搜索 API 注册，也可能只启用了维基百科等工具。桥接分别检查 API 注册与 `search_web` 可用性。

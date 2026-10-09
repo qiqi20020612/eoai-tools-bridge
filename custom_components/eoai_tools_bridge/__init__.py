@@ -1,4 +1,4 @@
-"""Expose web search and a response-only tool catalog through HA's LLM API."""
+"""Expose search, controlled tools, and read-only checks through HA's LLM API."""
 
 import logging
 
@@ -13,8 +13,15 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
 from .catalog import LIST_TOOLS_SCHEMA, async_list_tools, catalog_response
-from .const import DOMAIN, SERVICE_CALL_TOOL, SERVICE_LIST_TOOLS, SERVICE_SEARCH_WEB
+from .const import (
+    DOMAIN,
+    SERVICE_CALL_TOOL,
+    SERVICE_CHECK_TOOLS,
+    SERVICE_LIST_TOOLS,
+    SERVICE_SEARCH_WEB,
+)
 from .gateway import CALL_TOOL_SCHEMA, async_call_tool
+from .readiness import CHECK_TOOLS_SCHEMA, async_check_tools
 from .search import SEARCH_SCHEMA, async_search, failure_response
 
 _LOGGER = logging.getLogger(__name__)
@@ -48,6 +55,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         """Apply the current explicit policy for every controlled call."""
         return await async_call_tool(hass, call)
 
+    async def handle_check_tools(call: ServiceCall) -> ServiceResponse:
+        """Inspect only the administrator's explicitly configured tools."""
+        return await async_check_tools(hass, call)
+
     if not hass.services.has_service(DOMAIN, SERVICE_SEARCH_WEB):
         hass.services.async_register(
             DOMAIN,
@@ -70,6 +81,14 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             SERVICE_CALL_TOOL,
             handle_call_tool,
             schema=CALL_TOOL_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+    if not hass.services.has_service(DOMAIN, SERVICE_CHECK_TOOLS):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_CHECK_TOOLS,
+            handle_check_tools,
+            schema=CHECK_TOOLS_SCHEMA,
             supports_response=SupportsResponse.ONLY,
         )
     return True

@@ -5,6 +5,7 @@ NAME = "EOAIC2 Tools Bridge"
 SERVICE_SEARCH_WEB = "search_web"
 SERVICE_LIST_TOOLS = "list_tools"
 SERVICE_CALL_TOOL = "call_tool"
+SERVICE_CHECK_TOOLS = "check_tools"
 API_ID = "llm_intents"
 TOOL_NAME = "search_web"
 
@@ -19,6 +20,17 @@ MAX_TOOL_JSON_NODES = 256
 MAX_TOOL_RESULT_ITEMS = 32
 MAX_TOOL_RESULT_TEXT = 2048
 TOOL_TIMEOUT_SECONDS = 20
+CHECK_TIMEOUT_SECONDS = 10
+
+CHECK_ERROR_MESSAGES = {
+    "bridge_not_loaded": "Add or enable the EOAIC2 Tools Bridge integration first.",
+    "permission_denied": (
+        "Checking tool readiness requires the original active administrator."
+    ),
+    "policy_changed": "Bridge permissions changed during the check. Check again.",
+    "api_failed": "Could not read the LLM API registry. Check its integrations.",
+    "timeout": "Checking tool readiness timed out. No tool was called.",
+}
 
 TOOL_ERROR_MESSAGES = {
     "bridge_not_loaded": "Add or enable the EOAIC2 Tools Bridge integration first.",

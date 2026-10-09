@@ -11,6 +11,7 @@ from homeassistant.helpers.translation import async_get_translations
 from custom_components.eoai_tools_bridge.const import (
     DOMAIN,
     SERVICE_CALL_TOOL,
+    SERVICE_CHECK_TOOLS,
     SERVICE_LIST_TOOLS,
     SERVICE_SEARCH_WEB,
 )
@@ -44,6 +45,12 @@ async def test_runtime_action_description(hass, bridge_entry):
     key = f"component.{DOMAIN}.services.{SERVICE_CALL_TOOL}"
     assert english[f"{key}.name"] == "Call an allowed tool"
     assert chinese[f"{key}.name"] == "调用白名单工具"
+    checker = descriptions[DOMAIN][SERVICE_CHECK_TOOLS]
+    assert checker["fields"] == {}
+    assert checker["response"] == {"optional": False}
+    key = f"component.{DOMAIN}.services.{SERVICE_CHECK_TOOLS}"
+    assert english[f"{key}.name"] == "Check tool readiness"
+    assert chinese[f"{key}.name"] == "检查工具就绪状态"
 
 
 def test_documented_yaml_matches_delivered_example():
@@ -62,6 +69,7 @@ def test_runtime_english_translation_and_chinese_keys():
     assert chinese["config"]["abort"]["already_configured"]
     assert chinese["services"][SERVICE_SEARCH_WEB]["fields"]["query"]["name"]
     assert chinese["services"][SERVICE_LIST_TOOLS]["name"]
+    assert chinese["services"][SERVICE_CHECK_TOOLS]["name"]
     assert chinese["services"][SERVICE_CALL_TOOL]["fields"]["tool_args"]["name"]
     assert set(chinese["options"]["step"]["init"]["data"]) == {
         "enabled",
@@ -73,3 +81,8 @@ def test_runtime_english_translation_and_chinese_keys():
 def test_catalog_action_example_has_no_arguments():
     action = yaml.safe_load((ROOT / "examples/list_tools_action.yaml").read_text())
     assert action == {"action": f"{DOMAIN}.{SERVICE_LIST_TOOLS}", "data": {}}
+
+
+def test_check_action_example_has_no_arguments():
+    action = yaml.safe_load((ROOT / "examples/check_tools_action.yaml").read_text())
+    assert action == {"action": f"{DOMAIN}.{SERVICE_CHECK_TOOLS}", "data": {}}

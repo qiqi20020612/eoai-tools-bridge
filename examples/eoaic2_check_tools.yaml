@@ -1,0 +1,22 @@
+# Optional: append to existing Functions for administrator-context checks.
+- spec:
+    name: check_enabled_tools
+    description: >-
+      Check readiness of tools explicitly configured in the bridge allowlist.
+      Requires the original active administrator context and takes no arguments.
+      This checks metadata only; it does not execute tools or verify provider
+      credentials, network connectivity or argument values. success means the
+      check completed, not that every tool is ready. Report each tool status.
+      A ready status is a snapshot and grants no new permissions. Never retry
+      side effects or expand permissions based on this response. Existing
+      web_search and device-control functions can be used independently.
+    parameters:
+      type: object
+      properties: {}
+      additionalProperties: false
+  function:
+    type: script
+    sequence:
+      - action: eoai_tools_bridge.check_tools
+        data: {}
+        response_variable: _function_result

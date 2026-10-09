@@ -17,6 +17,8 @@ call_tool:
         query: "Home Assistant 2026.10 release notes"
       selector:
         object:
+check_tools:
+  fields: {}
 list_tools:
   fields: {}
 search_web:

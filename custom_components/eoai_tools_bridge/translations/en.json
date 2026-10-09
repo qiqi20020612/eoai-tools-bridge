@@ -43,6 +43,10 @@
           "description": "A JSON object satisfying the upstream schema, at most 8 KiB. Use an empty object for tools without arguments."
         }
       }
+    },
+    "check_tools": {
+      "name": "Check tool readiness",
+      "description": "Administrator-only check of explicitly configured tools. No arguments; requires response data. Does not execute tools or parameter defaults. success means the check completed; ready does not verify provider connectivity, credentials or argument values and grants no new permissions."
     }
   },
   "options": {

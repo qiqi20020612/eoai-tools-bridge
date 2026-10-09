@@ -8,6 +8,9 @@
     },
     "call_tool": {
       "service": "mdi:tools"
+    },
+    "check_tools": {
+      "service": "mdi:clipboard-check-outline"
     }
   }
 }
