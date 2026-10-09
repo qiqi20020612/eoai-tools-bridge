@@ -18,6 +18,7 @@ dev = [
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
+pythonpath = ["."]
 addopts = "--strict-markers --disable-socket --allow-unix-socket"
 markers = [
   "upstream: execute the pinned, unmodified EOAIC2 ScriptFunction with HA Core and a simulated search tool",
