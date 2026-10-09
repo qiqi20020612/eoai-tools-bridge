@@ -9,6 +9,7 @@ from homeassistant.core import (
     ServiceResponse,
     SupportsResponse,
 )
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
 from .catalog import LIST_TOOLS_SCHEMA, async_list_tools, catalog_response
@@ -16,6 +17,7 @@ from .const import DOMAIN, SERVICE_LIST_TOOLS, SERVICE_SEARCH_WEB
 from .search import SEARCH_SCHEMA, async_search, failure_response
 
 _LOGGER = logging.getLogger(__name__)
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
