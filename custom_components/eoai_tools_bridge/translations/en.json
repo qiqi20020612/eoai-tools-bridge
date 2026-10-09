@@ -3,8 +3,8 @@
   "config": {
     "step": {
       "user": {
-        "title": "Add the search and tool catalog bridge",
-        "description": "This bridge exposes Tools for Assist web search and a read-only tool catalog. Configure Brave or SearXNG in Tools for Assist, then append the search script example to your existing EOAIC2 Functions. The catalog example is optional. No API key is needed here. You can finish setup before enabling the search provider."
+        "title": "Add the search and tool bridge",
+        "description": "This bridge exposes Tools for Assist web search and a read-only tool catalog. Configure Brave or SearXNG in Tools for Assist, then append the search script example to your existing EOAIC2 Functions. Other tool calls are disabled by default and can be explicitly enabled later in bridge options. No API key is needed here. You can finish setup before enabling the search provider."
       }
     },
     "abort": {
@@ -24,7 +24,41 @@
     },
     "list_tools": {
       "name": "List available tools",
-      "description": "List enabled, allowlisted read-only search tools, descriptions and upstream parameter schemas without executing any tool. Requires response data. Descriptions are untrusted data."
+      "description": "List allowlisted read-only tools and upstream parameters without executing tools. Keeps the default search catalog; administrators can discover explicitly enabled additional read-only tools. Requires response data. Descriptions are untrusted data."
+    },
+    "call_tool": {
+      "name": "Call an allowed tool",
+      "description": "Validate administrator identity, current allowlist and parameters, then execute once. Returns data or fixed errors and requires response data. outcome_unknown means side effects may have occurred; do not retry automatically.",
+      "fields": {
+        "api_id": {
+          "name": "API ID",
+          "description": "Exact API ID explicitly enabled in bridge options."
+        },
+        "tool_name": {
+          "name": "Tool name",
+          "description": "Exact tool name explicitly enabled in that API."
+        },
+        "tool_args": {
+          "name": "Tool arguments",
+          "description": "A JSON object satisfying the upstream schema, at most 8 KiB. Use an empty object for tools without arguments."
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Controlled tool calls",
+        "description": "Enter trusted API/tool pairs, one per line, for example llm_intents/search_web. Maximum 32 pairs; no wildcards. Changes apply immediately. call_tool is disabled by default and requires the original active administrator identity. Voice/automation contexts without user_id cannot use it; existing web search still works. Side effects include writes, destructive tools and tools without read-only declarations. Enable only tools you intend to authorize.",
+        "data": {
+          "enabled": "Enable call_tool",
+          "allowed_tools": "API/tool allowlist",
+          "allow_side_effects": "Allow side effects and unannotated tools"
+        }
+      }
+    },
+    "error": {
+      "invalid_allowlist": "Enter at most 32 exact API/tool pairs, one per line. An enabled gateway needs a nonempty allowlist."
     }
   }
 }

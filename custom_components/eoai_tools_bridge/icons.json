@@ -5,6 +5,9 @@
     },
     "list_tools": {
       "service": "mdi:format-list-bulleted"
+    },
+    "call_tool": {
+      "service": "mdi:tools"
     }
   }
 }

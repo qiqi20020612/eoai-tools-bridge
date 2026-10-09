@@ -6,11 +6,18 @@ from unittest.mock import AsyncMock
 
 import probatio as vol
 import pytest
-from homeassistant.core import HomeAssistant
+from homeassistant.core import Context, HomeAssistant
 from homeassistant.helpers import llm
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.eoai_tools_bridge.const import API_ID, DOMAIN, TOOL_NAME
+from custom_components.eoai_tools_bridge.const import (
+    API_ID,
+    CONF_ALLOW_SIDE_EFFECTS,
+    CONF_ALLOWED_TOOLS,
+    CONF_ENABLED,
+    DOMAIN,
+    TOOL_NAME,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -26,6 +33,28 @@ async def bridge_entry(hass: HomeAssistant) -> MockConfigEntry:
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     return entry
+
+
+@pytest.fixture
+def gateway_entry(
+    hass: HomeAssistant, bridge_entry: MockConfigEntry
+) -> MockConfigEntry:
+    """Explicitly opt in; upgraded entries without options remain disabled."""
+    hass.config_entries.async_update_entry(
+        bridge_entry,
+        options={
+            CONF_ENABLED: True,
+            CONF_ALLOWED_TOOLS: f"{API_ID}/{TOOL_NAME}",
+            CONF_ALLOW_SIDE_EFFECTS: False,
+        },
+    )
+    return bridge_entry
+
+
+@pytest.fixture
+def admin_context(hass_admin_user) -> Context:
+    """Use a real active user in HA's auth store, not a fabricated admin ID."""
+    return Context(user_id=hass_admin_user.id, parent_id="original-tool-request")
 
 
 class SearchTool(llm.Tool):

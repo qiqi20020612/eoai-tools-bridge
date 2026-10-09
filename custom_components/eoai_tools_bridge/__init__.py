@@ -13,7 +13,8 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
 from .catalog import LIST_TOOLS_SCHEMA, async_list_tools, catalog_response
-from .const import DOMAIN, SERVICE_LIST_TOOLS, SERVICE_SEARCH_WEB
+from .const import DOMAIN, SERVICE_CALL_TOOL, SERVICE_LIST_TOOLS, SERVICE_SEARCH_WEB
+from .gateway import CALL_TOOL_SCHEMA, async_call_tool
 from .search import SEARCH_SCHEMA, async_search, failure_response
 
 _LOGGER = logging.getLogger(__name__)
@@ -43,6 +44,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             return catalog_response("bridge_not_loaded")
         return await async_list_tools(hass, call)
 
+    async def handle_call_tool(call: ServiceCall) -> ServiceResponse:
+        """Apply the current explicit policy for every controlled call."""
+        return await async_call_tool(hass, call)
+
     if not hass.services.has_service(DOMAIN, SERVICE_SEARCH_WEB):
         hass.services.async_register(
             DOMAIN,
@@ -57,6 +62,14 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             SERVICE_LIST_TOOLS,
             handle_list_tools,
             schema=LIST_TOOLS_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+    if not hass.services.has_service(DOMAIN, SERVICE_CALL_TOOL):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_CALL_TOOL,
+            handle_call_tool,
+            schema=CALL_TOOL_SCHEMA,
             supports_response=SupportsResponse.ONLY,
         )
     return True

@@ -11,6 +11,7 @@ from custom_components.eoai_tools_bridge import async_setup
 from custom_components.eoai_tools_bridge.const import (
     DOMAIN,
     NAME,
+    SERVICE_CALL_TOOL,
     SERVICE_LIST_TOOLS,
     SERVICE_SEARCH_WEB,
 )
@@ -45,10 +46,11 @@ async def test_register_once_and_response_only(
         assert await async_setup(hass, {})
     register.assert_not_called()
     assert set(hass.services.async_services()[DOMAIN]) == {
+        SERVICE_CALL_TOOL,
         SERVICE_SEARCH_WEB,
         SERVICE_LIST_TOOLS,
     }
-    for service in (SERVICE_SEARCH_WEB, SERVICE_LIST_TOOLS):
+    for service in (SERVICE_SEARCH_WEB, SERVICE_LIST_TOOLS, SERVICE_CALL_TOOL):
         assert hass.services.supports_response(DOMAIN, service) is SupportsResponse.ONLY
 
 
@@ -91,6 +93,7 @@ async def test_unload_reload_and_remove(
     assert response["success"] is True
     assert await hass.config_entries.async_reload(bridge_entry.entry_id)
     assert set(hass.services.async_services()[DOMAIN]) == {
+        SERVICE_CALL_TOOL,
         SERVICE_SEARCH_WEB,
         SERVICE_LIST_TOOLS,
     }

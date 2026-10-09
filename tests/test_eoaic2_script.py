@@ -16,6 +16,12 @@ import yaml
 from homeassistant.core import Context
 from homeassistant.helpers import llm
 
+from custom_components.eoai_tools_bridge.const import (
+    API_ID,
+    CONF_ALLOWED_TOOLS,
+    CONF_ENABLED,
+    TOOL_NAME,
+)
 from scripts.fetch_test_upstream import DESTINATION, FILES
 
 pytestmark = pytest.mark.upstream
@@ -150,4 +156,113 @@ async def test_original_script_returns_read_only_catalog(
     assert len(response["tools"]) == int(available)
     if available:
         assert response["tools"][0]["parameters"]["required"] == ["query"]
+    search_tool.call.assert_not_called()
+
+
+def gateway_config(function):
+    example = yaml.safe_load((ROOT / "examples/eoaic2_call_tool.yaml").read_text())[0]
+    assert example["spec"]["name"] == "call_allowed_tool"
+    return function.validate_schema(example["function"])
+
+
+@pytest.mark.parametrize("query", ["123", "{}", "{{ states('light.private') }}"])
+async def test_original_script_calls_allowed_tool_with_original_admin(
+    hass,
+    gateway_entry,
+    search_api,
+    search_tool,
+    upstream_script_function,
+    admin_context,
+    query,
+):
+    original = llm.LLMContext(
+        platform="extended_openai_conversation",
+        context=admin_context,
+        language="zh-Hans",
+        assistant="conversation",
+        device_id="voice-device",
+    )
+    response = await upstream_script_function.execute(
+        hass,
+        gateway_config(upstream_script_function),
+        {"api_id": API_ID, "tool_name": TOOL_NAME, "tool_args": {"query": query}},
+        original,
+        [],
+    )
+    assert response["success"] is True
+    assert response["result"] == {
+        "results": [{"title": "Test title", "content": "Test snippet"}]
+    }
+    search_tool.call.assert_awaited_once()
+    _, tool_input, bridge_context = search_tool.call.call_args.args
+    assert tool_input.tool_args == {"query": query}
+    assert bridge_context.context is admin_context
+    assert bridge_context.device_id is None
+
+
+@pytest.mark.parametrize("identity", ["none", "non_admin", "inactive_admin"])
+async def test_original_script_cannot_create_admin_identity(
+    hass,
+    gateway_entry,
+    search_api,
+    search_tool,
+    upstream_script_function,
+    hass_admin_user,
+    hass_read_only_user,
+    identity,
+):
+    original = None
+    if identity != "none":
+        user = hass_read_only_user if identity == "non_admin" else hass_admin_user
+        if identity == "inactive_admin":
+            user.is_active = False
+        original = llm.LLMContext(
+            platform="extended_openai_conversation",
+            context=Context(user_id=user.id),
+            language="zh-Hans",
+            assistant="conversation",
+            device_id=None,
+        )
+    response = await upstream_script_function.execute(
+        hass,
+        gateway_config(upstream_script_function),
+        {"api_id": API_ID, "tool_name": TOOL_NAME, "tool_args": {"query": "test"}},
+        original,
+        [],
+    )
+    assert response["error_code"] == "permission_denied"
+    assert response["outcome_unknown"] is False
+    assert search_api.contexts == []
+    search_tool.call.assert_not_called()
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+async def test_original_script_handles_disabled_and_invalid_args(
+    hass,
+    gateway_entry,
+    search_api,
+    search_tool,
+    upstream_script_function,
+    admin_context,
+    enabled,
+):
+    hass.config_entries.async_update_entry(
+        gateway_entry,
+        options={CONF_ENABLED: enabled, CONF_ALLOWED_TOOLS: f"{API_ID}/{TOOL_NAME}"},
+    )
+    original = llm.LLMContext(
+        platform="extended_openai_conversation",
+        context=admin_context,
+        language="zh-Hans",
+        assistant="conversation",
+        device_id=None,
+    )
+    response = await upstream_script_function.execute(
+        hass,
+        gateway_config(upstream_script_function),
+        {"api_id": API_ID, "tool_name": TOOL_NAME, "tool_args": {"query": 123}},
+        original,
+        [],
+    )
+    assert response["error_code"] == ("invalid_args" if enabled else "gateway_disabled")
     search_tool.call.assert_not_called()

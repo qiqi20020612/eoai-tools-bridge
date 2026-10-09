@@ -1,0 +1,6 @@
+action: eoai_tools_bridge.call_tool
+data:
+  api_id: llm_intents
+  tool_name: search_web
+  tool_args:
+    query: "Home Assistant 2026.10 release notes"

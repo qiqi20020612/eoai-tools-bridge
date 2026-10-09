@@ -18,6 +18,7 @@ from custom_components.eoai_tools_bridge.const import (
     DOMAIN,
     MAX_CATALOG_DESCRIPTION_LENGTH,
     MAX_RESPONSE_BYTES,
+    SERVICE_CALL_TOOL,
     SERVICE_LIST_TOOLS,
     SERVICE_SEARCH_WEB,
     TOOL_NAME,
@@ -382,7 +383,9 @@ async def test_catalog_unload_reload_remove(
     search_tool.call.assert_not_called()
 
 
-@pytest.mark.parametrize("missing", [SERVICE_LIST_TOOLS, SERVICE_SEARCH_WEB])
+@pytest.mark.parametrize(
+    "missing", [SERVICE_LIST_TOOLS, SERVICE_SEARCH_WEB, SERVICE_CALL_TOOL]
+)
 async def test_setup_registers_only_missing_action(hass, bridge_entry, missing):
     other = SERVICE_SEARCH_WEB if missing == SERVICE_LIST_TOOLS else SERVICE_LIST_TOOLS
     hass.services.async_remove(DOMAIN, missing)

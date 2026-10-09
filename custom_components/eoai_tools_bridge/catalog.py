@@ -22,6 +22,7 @@ from .const import (
     MAX_RESPONSE_BYTES,
     MAX_TITLE_LENGTH,
 )
+from .policy import async_catalog_allowlist, async_is_admin, get_policy, read_only_basis
 
 _LOGGER = logging.getLogger(__name__)
 LIST_TOOLS_SCHEMA = vol.Schema({}, extra=vol.PREVENT_EXTRA)
@@ -79,21 +80,6 @@ def catalog_response(code: str | None = None) -> dict[str, Any]:
         "error_code": code,
         "truncated": False,
     }
-
-
-def _read_only_basis(tool: llm.Tool) -> str | None:
-    """Allow audited legacy tools; reject explicit unsafe declarations."""
-    annotations = tool.annotations
-    if annotations is llm.Tool.annotations:
-        # Tools for Assist's pinned search tool predates these annotations.
-        return "audited_allowlist"
-    if (
-        isinstance(annotations, llm.ToolAnnotations)
-        and annotations.read_only is True
-        and annotations.destructive is False
-    ):
-        return "annotation"
-    return None
 
 
 def _metadata_text(value: Any, limit: int) -> tuple[str | None, bool]:
@@ -215,25 +201,34 @@ async def async_list_tools(hass: HomeAssistant, call: ServiceCall) -> dict[str, 
         device_id=None,
     )
     stage = "api_failed"
+    original_user_id = call.context.user_id
     try:
         async with asyncio.timeout(CATALOG_TIMEOUT_SECONDS):
+            policy = get_policy(hass)
+            allowlist = await async_catalog_allowlist(hass, call)
             for api in llm.async_get_apis(hass):
                 # Never instantiate unapproved APIs, even to inspect annotations.
-                if not any(api_id == api.id for api_id, _ in CATALOG_ALLOWLIST):
+                if not any(api_id == api.id for api_id, _ in allowlist):
                     continue
                 stage = "api_failed"
                 instance = await llm.async_get_api(hass, api.id, context)
                 seen_names: set[str] = set()
                 for tool in instance.tools:
                     stage = "invalid_metadata"
-                    if (api.id, tool.name) not in CATALOG_ALLOWLIST:
+                    if (api.id, tool.name) not in allowlist:
                         continue
                     # HA dispatches the first tool with a matching name. A later
                     # duplicate cannot replace that tool's safety declaration.
                     if tool.name in seen_names:
                         continue
                     seen_names.add(tool.name)
-                    basis = _read_only_basis(tool)
+                    if (api.id, tool.name) not in CATALOG_ALLOWLIST and (
+                        call.context.user_id != original_user_id
+                        or not await async_is_admin(hass, call)
+                        or get_policy(hass) != policy
+                    ):
+                        return catalog_response("permission_denied")
+                    basis = read_only_basis(api.id, tool)
                     if basis is None:
                         continue
                     api_name, api_cut = _metadata_text(api.name, MAX_TITLE_LENGTH)

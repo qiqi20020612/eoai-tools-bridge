@@ -4,8 +4,49 @@ DOMAIN = "eoai_tools_bridge"
 NAME = "EOAIC2 Tools Bridge"
 SERVICE_SEARCH_WEB = "search_web"
 SERVICE_LIST_TOOLS = "list_tools"
+SERVICE_CALL_TOOL = "call_tool"
 API_ID = "llm_intents"
 TOOL_NAME = "search_web"
+
+CONF_ENABLED = "enabled"
+CONF_ALLOWED_TOOLS = "allowed_tools"
+CONF_ALLOW_SIDE_EFFECTS = "allow_side_effects"
+MAX_ALLOWED_TOOLS = 32
+MAX_IDENTIFIER_LENGTH = 128
+MAX_TOOL_ARGS_BYTES = 8192
+MAX_TOOL_JSON_DEPTH = 12
+MAX_TOOL_JSON_NODES = 256
+MAX_TOOL_RESULT_ITEMS = 32
+MAX_TOOL_RESULT_TEXT = 2048
+TOOL_TIMEOUT_SECONDS = 20
+
+TOOL_ERROR_MESSAGES = {
+    "bridge_not_loaded": "Add or enable the EOAIC2 Tools Bridge integration first.",
+    "gateway_disabled": "Enable controlled tool calls in the bridge options first.",
+    "tool_not_allowed": "This API/tool pair is not enabled in the bridge allowlist.",
+    "permission_denied": (
+        "Controlled tool calls require an active administrator context."
+    ),
+    "side_effects_blocked": (
+        "This tool may change state or has not declared read-only behavior. "
+        "Enable side effects in the bridge options to allow it."
+    ),
+    "api_unavailable": "The allowed LLM API is not currently registered.",
+    "tool_unavailable": "The allowed tool is not currently available in its LLM API.",
+    "tool_changed": "The tool definition changed before execution. It was not called.",
+    "api_failed": "Could not open the allowed LLM API. Check its integration.",
+    "invalid_schema": "The tool does not provide a supported native parameter schema.",
+    "invalid_args": (
+        "Tool arguments do not satisfy the tool's parameter schema or limits."
+    ),
+    "policy_changed": (
+        "Bridge permissions changed before execution. The tool was not called."
+    ),
+    "timeout": "The tool request timed out. Check its integration before retrying.",
+    "upstream_error": "The tool reported an error. Check its integration.",
+    "call_failed": "The tool call failed. Check its integration.",
+    "invalid_response": "The tool returned an unsupported result format.",
+}
 
 # Audited against the pinned Tools for Assist source in docs/UPSTREAM.md.
 # An upstream read_only annotation alone never extends this allowlist.
@@ -17,6 +58,9 @@ MAX_CATALOG_SCHEMA_DEPTH = 12
 MAX_CATALOG_SCHEMA_NODES = 256
 
 CATALOG_ERROR_MESSAGES = {
+    "permission_denied": (
+        "Catalog permissions changed before metadata could be returned."
+    ),
     "bridge_not_loaded": "Add or enable the EOAIC2 Tools Bridge integration first.",
     "api_failed": "Could not read the allowed LLM API. Check Tools for Assist.",
     "timeout": "Reading the tool catalog timed out. Try again later.",

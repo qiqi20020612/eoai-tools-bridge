@@ -30,6 +30,12 @@ v0.2 清单使用 `async_get_apis` 枚举注册表，先过滤固定 API 白名�
 
 HA `ToolAnnotations` 的默认值为 `read_only=False, destructive=True`，代表未声明时保守处理。固定快照中的 Tools for Assist 搜索工具直接继承未声明状态；v0.2 仅对已经审核的 `llm_intents/search_web` 使用白名单依据，并在清单标记 `read_only_basis=audited_allowlist`。若上游给出独立声明，则必须同时为只读且无破坏性。`read_only=true` 不会自行扩大 API/工具白名单。
 
+v0.3 `call_tool` 使用同一公开注册/调度接口，只在当前精确白名单和原始有效管理员授权通过后取得 API。HA 2026.10.0 的 `APIInstance.async_call_tool` 不调用工具的参数 Schema，因此桥接先执行工具公开的 probatio Schema，并再次检查结果是受限 JSON 对象，再交给原生调度。Schema/default 工厂运行一次，清单仍拒绝带默认值的 Schema；调用与发现采用不同的执行边界。HA 会在 LLM trace 中记录工具名和参数，桥接自身不记录正文。
+
+[auth/models.py](https://github.com/home-assistant/core/blob/6a811d3359c7b2076dc9e1cf900843a129c044af/homeassistant/auth/models.py) 提供用户的 `is_active` 和 `is_admin`；桥接通过 `hass.auth.async_get_user` 查询原始 Context 用户，不靠模型参数声明身份。缺少用户或非管理员明确拒绝。测试使用真实 HA 认证存储的用户。未声明只读的工具、写入或破坏性工具需要另外启用副作用选项；注释不作为 Python 沙箱。
+
+[config_entries.py](https://github.com/home-assistant/core/blob/6a811d3359c7b2076dc9e1cf900843a129c044af/homeassistant/config_entries.py) 的公开 OptionsFlow 在初始化后提供 `config_entry`。桥接保留单实例配置流与版本 1，新增原生选项流；旧配置没有授权选项，通用调用默认关闭。运行时每次读取选项和已加载状态，无需维护 API 实例或额外重载缓存。
+
 ## Tools for Assist
 
 [llm_functions.py](https://github.com/skye-harris/llm_intents/blob/100e740b93a2a1a6d304329883937193a4571ac0/custom_components/llm_intents/llm_functions.py) 中 `SearchAPI.id=llm_intents`。仅配置了相关工具的 API 才注册；即使搜索 API 注册，也可能只启用了维基百科等工具。桥接分别检查 API 注册与 `search_web` 可用性。

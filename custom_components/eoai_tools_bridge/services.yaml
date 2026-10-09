@@ -1,3 +1,22 @@
+call_tool:
+  fields:
+    api_id:
+      required: true
+      example: "llm_intents"
+      selector:
+        text:
+          multiline: false
+    tool_name:
+      required: true
+      example: "search_web"
+      selector:
+        text:
+          multiline: false
+    tool_args:
+      example:
+        query: "Home Assistant 2026.10 release notes"
+      selector:
+        object:
 list_tools:
   fields: {}
 search_web:
