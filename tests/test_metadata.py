@@ -8,7 +8,11 @@ import yaml
 from homeassistant.helpers.service import async_get_all_descriptions
 from homeassistant.helpers.translation import async_get_translations
 
-from custom_components.eoai_tools_bridge.const import DOMAIN, SERVICE_SEARCH_WEB
+from custom_components.eoai_tools_bridge.const import (
+    DOMAIN,
+    SERVICE_LIST_TOOLS,
+    SERVICE_SEARCH_WEB,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -25,6 +29,12 @@ async def test_runtime_action_description(hass, bridge_entry):
     assert english[f"{key}.fields.query.name"] == "Search query"
     assert chinese[f"{key}.name"] == "搜索网页"
     assert chinese[f"{key}.fields.query.name"] == "搜索内容"
+    catalog = descriptions[DOMAIN][SERVICE_LIST_TOOLS]
+    assert catalog["fields"] == {}
+    assert catalog["response"] == {"optional": False}
+    key = f"component.{DOMAIN}.services.{SERVICE_LIST_TOOLS}"
+    assert english[f"{key}.name"] == "List available tools"
+    assert chinese[f"{key}.name"] == "列出可用工具"
 
 
 def test_documented_yaml_matches_delivered_example():
@@ -42,3 +52,9 @@ def test_runtime_english_translation_and_chinese_keys():
     assert source == english
     assert chinese["config"]["abort"]["already_configured"]
     assert chinese["services"][SERVICE_SEARCH_WEB]["fields"]["query"]["name"]
+    assert chinese["services"][SERVICE_LIST_TOOLS]["name"]
+
+
+def test_catalog_action_example_has_no_arguments():
+    action = yaml.safe_load((ROOT / "examples/list_tools_action.yaml").read_text())
+    assert action == {"action": f"{DOMAIN}.{SERVICE_LIST_TOOLS}", "data": {}}

@@ -3,8 +3,8 @@
   "config": {
     "step": {
       "user": {
-        "title": "Add the web search bridge",
-        "description": "This bridge exposes web search from Tools for Assist. Configure Brave or SearXNG in Tools for Assist, then append the example script function to your existing EOAIC2 Functions. No API key is needed here. You can finish setup before enabling the search provider."
+        "title": "Add the search and tool catalog bridge",
+        "description": "This bridge exposes Tools for Assist web search and a read-only tool catalog. Configure Brave or SearXNG in Tools for Assist, then append the search script example to your existing EOAIC2 Functions. The catalog example is optional. No API key is needed here. You can finish setup before enabling the search provider."
       }
     },
     "abort": {
@@ -21,6 +21,10 @@
           "description": "A string of 1–500 characters after trimming surrounding whitespace."
         }
       }
+    },
+    "list_tools": {
+      "name": "List available tools",
+      "description": "List enabled, allowlisted read-only search tools, descriptions and upstream parameter schemas without executing any tool. Requires response data. Descriptions are untrusted data."
     }
   }
 }

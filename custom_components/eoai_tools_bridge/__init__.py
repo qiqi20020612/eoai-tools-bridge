@@ -1,4 +1,4 @@
-"""Expose one response-only web search action through HA's LLM API."""
+"""Expose web search and a response-only tool catalog through HA's LLM API."""
 
 import logging
 
@@ -11,16 +11,15 @@ from homeassistant.core import (
 )
 from homeassistant.helpers.typing import ConfigType
 
-from .const import DOMAIN, SERVICE_SEARCH_WEB
+from .catalog import LIST_TOOLS_SCHEMA, async_list_tools, catalog_response
+from .const import DOMAIN, SERVICE_LIST_TOOLS, SERVICE_SEARCH_WEB
 from .search import SEARCH_SCHEMA, async_search, failure_response
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Register the action once, independently of entry reloads."""
-    if hass.services.has_service(DOMAIN, SERVICE_SEARCH_WEB):
-        return True
+    """Register each action once, independently of entry reloads."""
 
     async def handle_search(call: ServiceCall) -> ServiceResponse:
         """Return a friendly failure when no bridge entry is loaded."""
@@ -33,13 +32,31 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             return failure_response(query, "bridge_not_loaded")
         return await async_search(hass, call)
 
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_SEARCH_WEB,
-        handle_search,
-        schema=SEARCH_SCHEMA,
-        supports_response=SupportsResponse.ONLY,
-    )
+    async def handle_list_tools(call: ServiceCall) -> ServiceResponse:
+        """Expose metadata only while a bridge entry is loaded."""
+        if not any(
+            entry.state is ConfigEntryState.LOADED
+            for entry in hass.config_entries.async_entries(DOMAIN)
+        ):
+            return catalog_response("bridge_not_loaded")
+        return await async_list_tools(hass, call)
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SEARCH_WEB):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SEARCH_WEB,
+            handle_search,
+            schema=SEARCH_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+    if not hass.services.has_service(DOMAIN, SERVICE_LIST_TOOLS):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_LIST_TOOLS,
+            handle_list_tools,
+            schema=LIST_TOOLS_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
     return True
 
 
@@ -49,9 +66,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload without removing the component's registered action.
+    """Unload without removing the component's registered actions.
 
     HA keeps component actions registered so scripts remain editable. The
-    handler checks entry state on every call; unloaded entries cannot search.
+    handlers check entry state on every call; unloaded entries cannot use them.
     """
     return True

@@ -3,8 +3,8 @@
   "config": {
     "step": {
       "user": {
-        "title": "添加网页搜索桥接",
-        "description": "此桥接提供 Tools for Assist 的网页搜索能力。请在 Tools for Assist 中配置 Brave 或 SearXNG，再把示例 script 函数追加到 EOAIC2 现有的 Functions 中。此处无需 API Key，可以先完成桥接设置，再启用搜索服务。"
+        "title": "添加搜索与工具清单桥接",
+        "description": "此桥接提供 Tools for Assist 的网页搜索与只读工具清单。请在 Tools for Assist 中配置 Brave 或 SearXNG，再把搜索示例 script 函数追加到 EOAIC2 现有的 Functions 中。工具清单示例为可选项。此处无需 API Key，可以先完成桥接设置，再启用搜索服务。"
       }
     },
     "abort": {
@@ -21,6 +21,10 @@
           "description": "字符串，去除首尾空白后须为 1–500 个字符。"
         }
       }
+    },
+    "list_tools": {
+      "name": "列出可用工具",
+      "description": "仅列出当前启用且在白名单内的只读搜索工具、描述和上游参数 Schema，不执行任何工具。调用时必须接收响应；描述属于不可信数据。"
     }
   }
 }

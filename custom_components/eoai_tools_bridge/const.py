@@ -1,10 +1,30 @@
-"""Constants for the search-only bridge."""
+"""Constants for the search bridge and its read-only catalog."""
 
 DOMAIN = "eoai_tools_bridge"
 NAME = "EOAIC2 Tools Bridge"
 SERVICE_SEARCH_WEB = "search_web"
+SERVICE_LIST_TOOLS = "list_tools"
 API_ID = "llm_intents"
 TOOL_NAME = "search_web"
+
+# Audited against the pinned Tools for Assist source in docs/UPSTREAM.md.
+# An upstream read_only annotation alone never extends this allowlist.
+CATALOG_ALLOWLIST = frozenset({(API_ID, TOOL_NAME)})
+CATALOG_TIMEOUT_SECONDS = 10
+MAX_CATALOG_DESCRIPTION_LENGTH = 2000
+MAX_CATALOG_SCHEMA_BYTES = 8192
+MAX_CATALOG_SCHEMA_DEPTH = 12
+MAX_CATALOG_SCHEMA_NODES = 256
+
+CATALOG_ERROR_MESSAGES = {
+    "bridge_not_loaded": "Add or enable the EOAIC2 Tools Bridge integration first.",
+    "api_failed": "Could not read the allowed LLM API. Check Tools for Assist.",
+    "timeout": "Reading the tool catalog timed out. Try again later.",
+    "invalid_schema": (
+        "An allowed tool has an unsupported or oversized parameter schema."
+    ),
+    "invalid_metadata": "An allowed tool has unsupported catalog metadata.",
+}
 
 MAX_QUERY_LENGTH = 500
 SEARCH_TIMEOUT_SECONDS = 20

@@ -8,7 +8,12 @@ from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.eoai_tools_bridge import async_setup
-from custom_components.eoai_tools_bridge.const import DOMAIN, NAME, SERVICE_SEARCH_WEB
+from custom_components.eoai_tools_bridge.const import (
+    DOMAIN,
+    NAME,
+    SERVICE_LIST_TOOLS,
+    SERVICE_SEARCH_WEB,
+)
 
 
 async def test_ui_setup_and_single_instance(hass: HomeAssistant) -> None:
@@ -39,11 +44,12 @@ async def test_register_once_and_response_only(
         assert await async_setup(hass, {})
         assert await async_setup(hass, {})
     register.assert_not_called()
-    assert list(hass.services.async_services()[DOMAIN]) == [SERVICE_SEARCH_WEB]
-    assert (
-        hass.services.supports_response(DOMAIN, SERVICE_SEARCH_WEB)
-        is SupportsResponse.ONLY
-    )
+    assert set(hass.services.async_services()[DOMAIN]) == {
+        SERVICE_SEARCH_WEB,
+        SERVICE_LIST_TOOLS,
+    }
+    for service in (SERVICE_SEARCH_WEB, SERVICE_LIST_TOOLS):
+        assert hass.services.supports_response(DOMAIN, service) is SupportsResponse.ONLY
 
 
 async def test_missing_upstream_does_not_block_loading(
@@ -84,7 +90,10 @@ async def test_unload_reload_and_remove(
     )
     assert response["success"] is True
     assert await hass.config_entries.async_reload(bridge_entry.entry_id)
-    assert list(hass.services.async_services()[DOMAIN]) == [SERVICE_SEARCH_WEB]
+    assert set(hass.services.async_services()[DOMAIN]) == {
+        SERVICE_SEARCH_WEB,
+        SERVICE_LIST_TOOLS,
+    }
     await hass.config_entries.async_remove(bridge_entry.entry_id)
     response = await hass.services.async_call(
         DOMAIN,

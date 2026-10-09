@@ -4,6 +4,7 @@ from collections.abc import AsyncGenerator
 from typing import Any
 from unittest.mock import AsyncMock
 
+import probatio as vol
 import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import llm
@@ -32,6 +33,9 @@ class SearchTool(llm.Tool):
 
     name = TOOL_NAME
     integration = API_ID
+    title = "Web search"
+    description = "Search the web for current information."
+    parameters = vol.Schema({vol.Required("query", description="Search query"): str})
 
     def __init__(self) -> None:
         self.call = AsyncMock(
@@ -58,6 +62,7 @@ class SearchAPI(llm.API):
         self.tools: list[llm.Tool] = [tool]
         self.contexts: list[llm.LLMContext] = []
         self.error: Exception | None = None
+        self.custom_serializer = None
 
     async def async_get_api_instance(self, context: llm.LLMContext) -> llm.APIInstance:
         """Simulate API acquisition while preserving its real HA implementation."""
@@ -69,6 +74,7 @@ class SearchAPI(llm.API):
             api_prompt="Untrusted upstream API prompt; must not be returned.",
             llm_context=context,
             tools=self.tools,
+            custom_serializer=self.custom_serializer,
         )
 
 

@@ -22,6 +22,14 @@
 
 [pyproject.toml](https://github.com/home-assistant/core/blob/6a811d3359c7b2076dc9e1cf900843a129c044af/pyproject.toml) 要求 Python `>=3.14.2`、`probatio==0.13.0`。本项目运行时没有额外 pip 依赖。
 
+v0.2 清单使用 `async_get_apis` 枚举注册表，先过滤固定 API 白名单，再通过 `async_get_api` 取得工具的公开 `name/title/description/parameters/annotations`。不读取工具配置、不导入第三方内部模块、不调用 `async_call_tool`。
+
+[openai_conversation/entity.py](https://github.com/home-assistant/core/blob/6a811d3359c7b2076dc9e1cf900843a129c044af/homeassistant/components/openai_conversation/entity.py) 使用 `probatio.to_openapi(..., custom_serializer=..., openapi_version="3.1.0")` 转换工具参数。本集成沿用公开接口，额外启用 `strict=True`，避免不支持的约束被放宽，并限制 Schema 结构、大小和输出字段。
+
+[homeassistant/__init__.py](https://github.com/home-assistant/core/blob/6a811d3359c7b2076dc9e1cf900843a129c044af/homeassistant/__init__.py) 在启动时调用 `probatio.compat.install_as_voluptuous()`。因此 Tools for Assist 的 `import voluptuous as vol` 在正常 HA 2026.10 进程中解析为 probatio 兼容层；不能根据包内仍存在 `voluptuous` 字样就断言其 Schema 不可转换，也不需要导入上游内部模块实现转换。
+
+HA `ToolAnnotations` 的默认值为 `read_only=False, destructive=True`，代表未声明时保守处理。固定快照中的 Tools for Assist 搜索工具直接继承未声明状态；v0.2 仅对已经审核的 `llm_intents/search_web` 使用白名单依据，并在清单标记 `read_only_basis=audited_allowlist`。若上游给出独立声明，则必须同时为只读且无破坏性。`read_only=true` 不会自行扩大 API/工具白名单。
+
 ## Tools for Assist
 
 [llm_functions.py](https://github.com/skye-harris/llm_intents/blob/100e740b93a2a1a6d304329883937193a4571ac0/custom_components/llm_intents/llm_functions.py) 中 `SearchAPI.id=llm_intents`。仅配置了相关工具的 API 才注册；即使搜索 API 注册，也可能只启用了维基百科等工具。桥接分别检查 API 注册与 `search_web` 可用性。

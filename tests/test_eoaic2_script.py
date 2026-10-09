@@ -134,3 +134,20 @@ async def test_field_template_would_coerce_a_numeric_query(
             [],
         )
     search_tool.call.assert_not_called()
+
+
+@pytest.mark.parametrize("available", [False, True])
+async def test_original_script_returns_read_only_catalog(
+    hass, bridge_entry, search_api, search_tool, upstream_script_function, available
+):
+    if not available:
+        search_api.tools = []
+    example = yaml.safe_load((ROOT / "examples/eoaic2_list_tools.yaml").read_text())[0]
+    assert example["spec"]["parameters"]["properties"] == {}
+    config = upstream_script_function.validate_schema(example["function"])
+    response = await upstream_script_function.execute(hass, config, {}, None, [])
+    assert response["success"] is True
+    assert len(response["tools"]) == int(available)
+    if available:
+        assert response["tools"][0]["parameters"]["required"] == ["query"]
+    search_tool.call.assert_not_called()
