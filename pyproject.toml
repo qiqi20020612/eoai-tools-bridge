@@ -1,0 +1,34 @@
+[project]
+name = "eoai-tools-bridge"
+version = "0.1.0"
+description = "Search-only Home Assistant bridge from EOAIC2 to Tools for Assist"
+requires-python = ">=3.14.2"
+
+[dependency-groups]
+dev = [
+  "gazetteer-matcher==1.1.0",
+  "hassil==3.12.1",
+  "home-assistant-intents==2026.10.6",
+  "pytest-homeassistant-custom-component==0.13.371",
+  "ruff==0.16.10",
+  "voluptuous==0.15.2",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+addopts = "--strict-markers --disable-socket --allow-unix-socket"
+markers = [
+  "upstream: execute the pinned, unmodified EOAIC2 ScriptFunction with HA Core and a simulated search tool",
+]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["custom_components.eoai_tools_bridge"]

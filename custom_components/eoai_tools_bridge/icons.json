@@ -1,0 +1,7 @@
+{
+  "services": {
+    "search_web": {
+      "service": "mdi:web"
+    }
+  }
+}

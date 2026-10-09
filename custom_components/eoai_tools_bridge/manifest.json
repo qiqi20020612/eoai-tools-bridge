@@ -1,0 +1,13 @@
+{
+  "domain": "eoai_tools_bridge",
+  "name": "EOAIC2 Tools Bridge",
+  "codeowners": ["@qiqi20020612"],
+  "config_flow": true,
+  "documentation": "https://github.com/qiqi20020612/eoai-tools-bridge",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/qiqi20020612/eoai-tools-bridge/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.1.0"
+}

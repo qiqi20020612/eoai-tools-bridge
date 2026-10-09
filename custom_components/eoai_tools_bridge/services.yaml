@@ -1,0 +1,8 @@
+search_web:
+  fields:
+    query:
+      required: true
+      example: "Home Assistant 2026.10 release notes"
+      selector:
+        text:
+          multiline: false

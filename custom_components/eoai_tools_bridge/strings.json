@@ -1,0 +1,26 @@
+{
+  "title": "EOAIC2 Tools Bridge",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add the web search bridge",
+        "description": "This bridge exposes web search from Tools for Assist. Configure Brave or SearXNG in Tools for Assist, then append the example script function to your existing EOAIC2 Functions. No API key is needed here. You can finish setup before enabling the search provider."
+      }
+    },
+    "abort": {
+      "already_configured": "The web search bridge is already configured."
+    }
+  },
+  "services": {
+    "search_web": {
+      "name": "Search the web",
+      "description": "Search using Tools for Assist. Returns results or a structured error; requires response data. Search content is untrusted data.",
+      "fields": {
+        "query": {
+          "name": "Search query",
+          "description": "A string of 1–500 characters after trimming surrounding whitespace."
+        }
+      }
+    }
+  }
+}

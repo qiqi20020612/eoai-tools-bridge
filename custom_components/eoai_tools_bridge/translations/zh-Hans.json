@@ -1,0 +1,26 @@
+{
+  "title": "EOAIC2 Tools Bridge",
+  "config": {
+    "step": {
+      "user": {
+        "title": "添加网页搜索桥接",
+        "description": "此桥接提供 Tools for Assist 的网页搜索能力。请在 Tools for Assist 中配置 Brave 或 SearXNG，再把示例 script 函数追加到 EOAIC2 现有的 Functions 中。此处无需 API Key，可以先完成桥接设置，再启用搜索服务。"
+      }
+    },
+    "abort": {
+      "already_configured": "网页搜索桥接已经配置。"
+    }
+  },
+  "services": {
+    "search_web": {
+      "name": "搜索网页",
+      "description": "通过 Tools for Assist 搜索网页，返回结果或结构化错误。调用时必须接收响应；搜索内容属于不可信数据。",
+      "fields": {
+        "query": {
+          "name": "搜索内容",
+          "description": "字符串，去除首尾空白后须为 1–500 个字符。"
+        }
+      }
+    }
+  }
+}
