@@ -11,7 +11,15 @@
 
 本地最终结果：**80 passed，0 skipped**。其中 **9 项**执行固定提交的原版 EOAIC2 ScriptFunction；其他测试覆盖桥接服务、参数/安全边界、生命周期及元数据。Ruff 静态检查及格式检查通过。安装 ZIP 已构建，并检查了内容清单及 SHA-256。
 
-GitHub CI 中的 Hassfest、HACS 校验以及真实 HACS 安装/更新，须在仓库发布后分别验证；当前本地测试不声明这些项目已通过。
+公开仓库已经发布：[qiqi20020612/eoai-tools-bridge](https://github.com/qiqi20020612/eoai-tools-bridge)。
+
+提交 `6f45b4abe73b7e2d34234368437085b4650a171c` 的 [GitHub CI](https://github.com/qiqi20020612/eoai-tools-bridge/actions/runs/37908765239) 已通过三个任务：
+
+- Ubuntu/Linux 上的全部 **80 项测试**、Ruff 检查、固定上游源码 SHA-256 校验和安装 ZIP 构建。
+- Home Assistant 官方 **Hassfest** 集成校验。
+- 官方 **HACS action** 的仓库校验（全部 9 项），包含许可证、描述、品牌、主题标签、manifest 和 hacs.json。
+
+这些是自动化和仓库规范验证，**真实 HACS 安装/更新及真实 HA 对话验收仍未执行**。后续记录提交只更新测试说明和发布文件，不改变已验证的集成实现。
 
 自动测试覆盖：
 
