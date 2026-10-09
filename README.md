@@ -18,6 +18,8 @@ EOAIC2 web_search（script Function）
 
 ### 1. 安装桥接
 
+私有仓库发行请从 Releases 下载 ZIP，按下方手动安装步骤更新；HACS 安装需要仓库公开。
+
 在 HACS 的菜单中打开「自定义存储库」，添加：
 
 ```text

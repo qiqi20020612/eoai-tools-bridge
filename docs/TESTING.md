@@ -21,7 +21,9 @@
 
 提交 `469e3ea45f2fde2a03e0764ce52bd70784666d58` 的 [首次 v0.2.0 CI](https://github.com/qiqi20020612/eoai-tools-bridge/actions/runs/37945161517) 中，Ubuntu 的 **124 项测试**、Ruff、固定上游源码校验及 ZIP 构建通过，官方 Hassfest 通过。Hassfest 提示缺少 CONFIG_SCHEMA，现已补充 HA 的公开 `config_entry_only_config_schema` 声明，并重新通过本地全部测试。
 
-首次 HACS 校验 **7/9 项通过、2 项失败**：仓库当前为私有，匿名读取 hacs.json 和 manifest 均为 404，校验器因此取得空内容。固定提交的文件可通过已认证 GitHub API 正常读取；这不是跳过或通过 HACS 校验的依据。[HACS 不支持私有仓库](https://www.hacs.xyz/docs/faq/private_repositories/)。发布方式确认后将补充最终状态，v0.1.0 的历史 CI 不用作 v0.2.0 的通过依据。
+补齐 CONFIG_SCHEMA 后，提交 `e4d9ff59b57cdffe452476f65145cb4d1a6ee2c1` 的 [CI](https://github.com/qiqi20020612/eoai-tools-bridge/actions/runs/37946199193) 再次通过 Ubuntu 测试和官方 Hassfest。后续发布记录仅修改文档，不改变已验证的集成或测试代码。
+
+HACS 校验 **7/9 项通过、2 项失败**：仓库当前为私有，匿名读取 hacs.json 和 manifest 均为 404，校验器因此取得空内容。固定提交的文件可通过已认证 GitHub API 正常读取；这不是跳过或通过 HACS 校验的依据。[HACS 不支持私有仓库](https://www.hacs.xyz/docs/faq/private_repositories/)。本次保留正常的 HACS 文件结构和校验流程，在私有仓库按标准 GitHub Release 流程发行安装 ZIP 与 SHA-256 文件；仓库保持私有。v0.1.0 的历史 CI 不用作 v0.2.0 的通过依据。
 
 | 范围 | 自动化覆盖 |
 | --- | --- |
@@ -38,7 +40,7 @@
 
 v0.1.0 的验收不覆盖本次新增动作。以下需要在实际 HA 2026.10.x、Tools for Assist 和 EOAIC2 环境执行；模拟测试与仓库校验不替代真实升级验收。
 
-- [ ] 从 v0.1.0 通过 HACS 更新到 v0.2.0 并重启 HA；原有配置项能加载，两个动作可见，没有导入或重复注册错误。
+- [ ] 从 v0.1.0 更新到 v0.2.0 并重启 HA；当前私有发行使用 Release ZIP 手动更新，公开仓库可通过 HACS 更新。原有配置项能加载，两个动作可见，没有导入或重复注册错误。
 - [ ] 启用网页搜索时，`eoai_tools_bridge.list_tools` 返回 `llm_intents/search_web` 的实际描述及 query Schema；清单动作本身不产生搜索调用。
 - [ ] 禁用搜索或移除搜索 API 后，清单返回成功的空列表；按 Tools for Assist 要求重载/更换后端后，下次调用反映新参数。
 - [ ] 可选追加 `examples/eoaic2_list_tools.yaml` 后，EOAIC2 调用 `list_search_tools` 能读取真实清单；原有 `web_search` 仍能搜索，设备控制 Functions 保持正常。
