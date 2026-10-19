@@ -93,6 +93,52 @@ def tool_response(
     }
 
 
+def _json_size(value: Any) -> int:
+    """Count the actual UTF-8 JSON, including escaped control characters."""
+    return len(json.dumps(value, ensure_ascii=False, allow_nan=False).encode("utf-8"))
+
+
+def _trim_result(node: Any, excess: int, depth: int = 0) -> tuple[Any, bool]:
+    """Reduce a copied body while keeping its envelope and first collection item.
+
+    Lists lose trailing items first. A single remaining item is trimmed inside;
+    text keeps a source prefix and ellipsis. Only nested objects may lose fields,
+    and never their last field. An unrepresentable body must fail, not disappear.
+    """
+    if isinstance(node, dict):
+        for key in sorted(node, key=lambda key: _json_size(node[key]), reverse=True):
+            value, changed = _trim_result(node[key], excess, depth + 1)
+            if changed:
+                node[key] = value
+                return node, True
+        if depth and len(node) > 1:
+            largest = max(node, key=lambda key: _json_size({key: node[key]}))
+            del node[largest]
+            return node, True
+    elif isinstance(node, list) and node:
+        if len(node) > 1:
+            node.pop()
+            return node, True
+        value, changed = _trim_result(node[0], excess, depth + 1)
+        if changed:
+            node[0] = value
+            return node, True
+    elif isinstance(node, str) and len(node) > 1:
+        size = _json_size(node)
+        minimum = _json_size(node[:1] + "…")
+        if minimum < size:
+            target = max(minimum, size - excess)
+            low, high = 1, len(node) - 1
+            while low < high:
+                middle = (low + high + 1) // 2
+                if _json_size(node[:middle] + "…") <= target:
+                    low = middle
+                else:
+                    high = middle - 1
+            return node[:low] + "…", True
+    return node, False
+
+
 def normalize_tool_result(
     api_id: str, tool_name: str, result: Any, *, side_effects: bool
 ) -> dict[str, Any]:
@@ -165,25 +211,15 @@ def normalize_tool_result(
 
     try:
         response["result"] = copy_json(data, 0)
-        while (
-            len(
-                json.dumps(response, ensure_ascii=False, allow_nan=False).encode(
-                    "utf-8"
-                )
-            )
-            > MAX_RESPONSE_BYTES
-        ):
+        if isinstance(response["result"], dict) and not response["result"]:
+            raise ValueError
+        while (size := _json_size(response)) > MAX_RESPONSE_BYTES:
             response["truncated"] = True
-            body = response["result"]
-            if isinstance(body, dict) and body:
-                body.popitem()
-            elif isinstance(body, list) and body:
-                body.pop()
-            elif isinstance(body, str) and len(body) > 1:
-                response["result"] = body[: len(body) // 2] + "…"
-            else:
-                response["result"] = None
-                break
+            response["result"], changed = _trim_result(
+                response["result"], size - MAX_RESPONSE_BYTES
+            )
+            if not changed:
+                raise ValueError
     except TypeError, ValueError, UnicodeError, RecursionError:
         return tool_response(
             api_id, tool_name, "invalid_response", outcome_unknown=side_effects

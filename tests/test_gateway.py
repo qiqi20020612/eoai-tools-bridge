@@ -656,6 +656,8 @@ def test_generic_unicode_response_budget():
     )
     assert response["success"] is True
     assert response["truncated"] is True
+    assert response["result"]["results"]
+    assert all(item.startswith("字") for item in response["result"]["results"])
     assert (
         len(json.dumps(response, ensure_ascii=False).encode("utf-8"))
         <= MAX_RESPONSE_BYTES

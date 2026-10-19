@@ -1,8 +1,8 @@
 # Tools for Assist 工具兼容清单
 
-核对日期：**2026-10-19（Asia/Shanghai）**。当前版本 **v0.6.0**，继续 0.x 小版本迭代。用户本次明确取消 Home Control API：EOAIC2 已有原生 HA 控制，因此 Home Control 的状态/历史、动态控制、脚本、设备上下文和计时器均从本项目后续开发与 1.0 门槛中移除。既有 EOAIC2 设备控制 Functions 继续使用原来的路径。
+核对日期：**2026-10-19（Asia/Shanghai）**。当前版本 **v0.6.1**，继续 0.x 小版本迭代。用户已明确取消 Home Control API：EOAIC2 已有原生 HA 控制，因此 Home Control 的状态/历史、动态控制、脚本、设备上下文和计时器均从本项目后续开发与 1.0 门槛中移除。既有 EOAIC2 设备控制 Functions 继续使用原来的路径。
 
-源码基准为 [Tools for Assist 1.11.0](https://github.com/skye-harris/llm_intents/tree/198e37885fe06e6452d2d6e26bc5e532b1686acc/custom_components/llm_intents)，提交 `198e37885fe06e6452d2d6e26bc5e532b1686acc`；保留原基线 `100e740b93a2a1a6d304329883937193a4571ac0` 回归。HA 源码与自动化测试基准已升级为 **2026.10.2**，提交 `8d7fd8b68677c2585be36ec86043308f403875b8`；基准升级后的 443 项回归通过。v0.6.0 初始发布时的 2026.10.0 证据保留在测试记录中。上游更新后重新核对入口、参数及实现，固定快照不保证未来版本兼容。Tavily 的增量核对见 [1.11.0 记录](TOOLS_FOR_ASSIST_1_11_0.md)。
+源码基准为 [Tools for Assist 1.11.0](https://github.com/skye-harris/llm_intents/tree/198e37885fe06e6452d2d6e26bc5e532b1686acc/custom_components/llm_intents)，提交 `198e37885fe06e6452d2d6e26bc5e532b1686acc`；保留原基线 `100e740b93a2a1a6d304329883937193a4571ac0` 回归。HA 源码与自动化测试基准已升级为 **2026.10.2**，提交 `8d7fd8b68677c2585be36ec86043308f403875b8`；基准升级后的 443 项回归通过。v0.6.0 初始发布时的 2026.10.0 证据保留在测试记录中；v0.6.1 在新基准下通过 473 项回归，并修复通用调用的大结果裁剪。上游更新后重新核对入口、参数及实现，固定快照不保证未来版本兼容。Tavily 的增量核对见 [1.11.0 记录](TOOLS_FOR_ASSIST_1_11_0.md)。
 
 ## 当前范围与证据
 
@@ -10,7 +10,7 @@
 
 | API / 工具 | 参数与条件 | v0.6 开发验证 | 真实验收 |
 | --- | --- | --- | --- |
-| `llm_intents/search_web` | `query`；Brave LLM Context 可选 `freshness`，Tavily 可选 `topic/time_range`；另含 Brave、SearXNG | 四个实现的原版参数和模拟调用；固定搜索、目录、就绪及通用调用回归 | 旧版搜索总体验收由用户报告通过；提供商逐项及 1.11.0 组合待确认 |
+| `llm_intents/search_web` | `query`；Brave LLM Context 可选 `freshness`，Tavily 可选 `topic/time_range`；另含 Brave、SearXNG | 四个实现的原版参数和模拟调用；固定搜索、目录、就绪及通用调用回归；v0.6.1 用原版 Brave LLM Context 与 EOAIC2 脚本验证带/不带 freshness 的大结果仍保留正文 | 旧版搜索总体验收由用户报告通过；提供商逐项及 1.11.0 组合待确认 |
 | `llm_intents/find_places` | `query`；上游地点后端配置 | 原版参数、目录、就绪和模拟 HTTP 调用 | 待逐项实际验收 |
 | `llm_intents/get_route` | `destination`，可选 `departure_time/mode`；上游起点与路线配置 | 原版参数及模拟 HTTP 调用；保留距离、耗时和嵌套结果 | 待逐项实际验收 |
 | `llm_intents/search_wikipedia` | `query` | 原版搜索与摘要方法，HTTP 模拟 | 待逐项实际验收 |

@@ -4,7 +4,7 @@
 
 **Home Control API 已按用户决定退出项目范围。** HA 设备控制继续使用 EOAIC2 原生 Functions；本项目后续不实现 Home Control 动态控制、脚本、设备上下文或计时器。
 
-适用版本：**Home Assistant Core 2026.10.x**；源码与自动化测试基准为 **2026.10.2**。开发环境需要 Python **3.14.2 或更新的 3.14 版本**。集成版本：`0.6.0`。
+适用版本：**Home Assistant Core 2026.10.x**；源码与自动化测试基准为 **2026.10.2**。开发环境需要 Python **3.14.2 或更新的 3.14 版本**。集成版本：`0.6.1`。
 
 ```text
 EOAIC2 web_search（script Function）
@@ -104,7 +104,7 @@ data:
 
 ### 5. 升级和只读工具清单
 
-从 v0.1.0–v0.5.0 升级时，在 HACS 更新桥接并重启 Home Assistant；手动安装则替换桥接自己的集成目录后重启。已有配置项、已发布动作及搜索 Functions YAML 保持兼容，不需重新添加集成或修改现有设备控制函数。v0.3.0 已保存的白名单和许可保持原值；较早版本没有通用调用选项，`call_tool` 仍默认关闭。就绪检查不会启用或授权任何工具。
+从 v0.1.0–v0.6.0 升级时，在 HACS 更新桥接并重启 Home Assistant；手动安装则替换桥接自己的集成目录后重启。已有配置项、已发布动作及搜索 Functions YAML 保持兼容，不需重新添加集成或修改现有设备控制函数。v0.3.0 已保存的白名单和许可保持原值；较早版本没有通用调用选项，`call_tool` 仍默认关闭。就绪检查不会启用或授权任何工具。
 
 在「开发者工具 → 动作」执行 [examples/list_tools_action.yaml](examples/list_tools_action.yaml)：
 
@@ -204,7 +204,7 @@ data:
 }
 ```
 
-`result` 是上游 JSON 正文，故与固定搜索接口的规范化 `results` 契约不同。失败时为 `null`，只返回固定错误消息。正文递归移除已知的指令、API prompt、Headers 和凭据字段；文本中的指令或非标准命名的敏感字段仍需上游正确处理。结果文字最多 2048 字符、每个容器保留前 32 项、最多 12 层和 256 个值节点、完整响应最多 **16 KiB**；省略数据时 `truncated=true`，模型不能推断省略内容。非 JSON 结果不会通过对象字符串转换暴露。
+`result` 是上游 JSON 正文，故与固定搜索接口的规范化 `results` 契约不同。失败时为 `null`，只返回固定错误消息。正文递归移除已知的指令、API prompt、Headers 和凭据字段；文本中的指令或非标准命名的敏感字段仍需上游正确处理。结果文字最多 2048 字符、每个容器保留前 32 项、最多 12 层和 256 个值节点、完整响应最多 **16 KiB**；省略数据时 `truncated=true`，模型不能推断省略内容。v0.6.1 在总预算超限时递归裁剪嵌套数组尾项和文本，必要时省略嵌套对象字段，保留顶层字段与首条数据，不再整项删除 `results`。文本按实际 UTF-8 JSON 大小裁短，计入引号、控制字符转义与省略号。顶层空对象（包括过滤后为空）或无法在预算内保留负载时返回 `success=false, error_code=invalid_response, result=null`；合法的空结果数组、零值和布尔值保持原样。非 JSON 结果不会通过对象字符串转换暴露。
 
 | call_tool error_code | 含义 |
 | --- | --- |
@@ -395,7 +395,7 @@ uv run --no-sync python scripts/build_release.py
 
 首次获取依赖和上游测试文件需要联网。pytest 阶段禁止网络访问。两个下载脚本缓存固定提交的 EOAIC2 4 个文件、Tools for Assist 原基线 20 个文件，以及独立的 1.11.0 快照 22 个文件（`.cache/upstream/llm_intents-1.11.0/`），并核对 SHA-256，生产集成不依赖它们，也不把它们打包。缺少 Tools for Assist 缓存会使对应契约测试失败并提示获取源码；旧 EOAIC2 测试保留缺失缓存时的跳过提示。完整 CI 获取两套源码，要求 0 skipped；仅运行本地桥接测试可使用 `pytest -m 'not upstream and not tools_upstream'`。
 
-自动测试使用真实 HA 配置流、选项流、认证用户、服务注册/校验、Context、LLM APIInstance、Schema 转换和 Script。契约测试执行未修改的 EOAIC2 `ScriptFunction` 与 Tools for Assist 工具/Schema/API，单位换算、日期和 SymPy 计算执行原版代码；网络、天气、历史数据及播放服务使用模拟后端。开发依赖新增 SymPy 仅供原版计算器测试，生产桥接无新增 pip 依赖。这些测试**不代表**真实搜索后端、实际对话模型、Assist/TTS、HACS 安装或生产重启已验收。v0.1.0–v0.4.0 实际验收由用户报告通过；v0.5.0、v0.6.0 和 1.11.0 组合仍待实际验收。
+自动测试使用真实 HA 配置流、选项流、认证用户、服务注册/校验、Context、LLM APIInstance、Schema 转换和 Script。契约测试执行未修改的 EOAIC2 `ScriptFunction` 与 Tools for Assist 工具/Schema/API，单位换算、日期和 SymPy 计算执行原版代码；网络、天气、历史数据及播放服务使用模拟后端。开发依赖新增 SymPy 仅供原版计算器测试，生产桥接无新增 pip 依赖。这些测试**不代表**真实搜索后端、实际对话模型、Assist/TTS、HACS 安装或生产重启已验收。v0.1.0–v0.4.0 实际验收由用户报告通过；v0.5.0、v0.6.0 的完整验收及 v0.6.1 修复后的真实复测仍待完成。
 
 实际执行结果与待完成的手工验收见 [docs/TESTING.md](docs/TESTING.md)，源码核对记录见 [docs/UPSTREAM.md](docs/UPSTREAM.md)。GitHub CI 运行同一套测试、Ruff、Hassfest 和 HACS 仓库校验。
 
