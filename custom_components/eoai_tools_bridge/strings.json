@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Add the tool bridge",
-        "description": "All tool execution uses call_tool with the original active administrator, explicit allowlist and gateway enabled. Configure search providers in Tools for Assist. Amap places and geocoding have optional Web Service credentials in bridge options. Installation requires no key and grants no tool permissions. From v0.7 the standalone search_web action is removed; update existing Functions and automations."
+        "description": "All tool execution uses call_tool with the original active administrator, explicit allowlist and gateway enabled. Configure search providers in Tools for Assist. Amap places, geocoding and routes have optional Web Service credentials in bridge options. Installation requires no key and grants no tool permissions. From v0.7 the standalone search_web action is removed; update existing Functions and automations."
       }
     },
     "abort": {
@@ -57,20 +57,22 @@
     "step": {
       "init": {
         "title": "Controlled tool calls",
-        "description": "Enter up to 32 exact API/tool pairs, one per line; no wildcards. All execution, including web search, requires call_tool enabled, an exact allowlist entry and the original active administrator. Voice/automation contexts without user_id cannot call tools. Read-only queries and the bounded calculator need no side-effect permission; playback and unknown/write tools require separate opt-in. Amap options are optional and grant no access: allow eoai_tools_bridge_amap/find_places or eoai_tools_bridge_amap/geocode explicitly. Store the Web Service key here, never in Functions. The default city restricts place searches. Optional nearby center must already be GCJ-02 longitude,latitude, up to 6 decimal places; no automatic HA home/device location or coordinate conversion. Changes apply immediately. Home Control remains with EOAIC2 native HA control.",
+        "description": "Enter up to 32 exact API/tool pairs, one per line; no wildcards. All execution, including web search, requires call_tool enabled, an exact allowlist entry and the original active administrator. Voice/automation contexts without user_id cannot call tools. Read-only queries and the bounded calculator need no side-effect permission; playback and unknown/write tools require separate opt-in. Amap options are optional and grant no access: allow eoai_tools_bridge_amap/find_places, eoai_tools_bridge_amap/geocode or eoai_tools_bridge_amap/get_route explicitly. Store the Web Service key here, never in Functions. The default city restricts place searches. Optional nearby center must already be GCJ-02 longitude,latitude, up to 6 decimal places; no automatic HA home/device location or coordinate conversion. The optional Amap home address is the route origin when origin is omitted; an explicit origin overrides it. Nearby center and home address are independent. Default route mode can also be overridden per call. No Google configuration or HA location is imported. Changes apply immediately. Home Control remains with EOAIC2 native HA control.",
         "data": {
           "enabled": "Enable call_tool",
           "allowed_tools": "API/tool allowlist",
           "allow_side_effects": "Allow side effects and tools without a read-only basis",
           "amap_api_key": "Amap Web Service API key (optional; empty clears)",
           "amap_city": "Amap default city (optional)",
-          "amap_location": "Amap nearby center: GCJ-02 longitude,latitude (optional)"
+          "amap_location": "Amap nearby center: GCJ-02 longitude,latitude (optional)",
+          "amap_home_address": "Amap home address or GCJ-02 longitude,latitude (optional)",
+          "amap_route_mode": "Amap default route mode"
         }
       }
     },
     "error": {
       "invalid_allowlist": "Enter at most 32 exact API/tool pairs, one per line. An enabled gateway needs a nonempty allowlist.",
-      "invalid_amap_options": "Use a 32-character hexadecimal Web Service key, a city up to 80 characters and GCJ-02 longitude,latitude (at most 6 decimals; longitude -180 to 180, latitude -90 to 90). Optional fields may be empty."
+      "invalid_amap_options": "Use a 32-character hexadecimal Web Service key, city up to 80 characters, valid GCJ-02 coordinates (longitude first, 6 decimals max), home address up to 500 characters and a listed route mode. Optional text fields may be empty; do not use relative locations such as here/home."
     }
   }
 }

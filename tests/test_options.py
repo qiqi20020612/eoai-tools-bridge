@@ -25,6 +25,8 @@ async def test_options_start_disabled_and_do_not_open_apis(
         "amap_api_key": "",
         "amap_city": "",
         "amap_location": "",
+        "amap_home_address": "",
+        "amap_route_mode": "DRIVE",
     }
     assert get_policy(hass).enabled is False
     assert search_api.contexts == []

@@ -11,7 +11,19 @@ MAX_AMAP_BYTES = 262_144
 _LOCATION = re.compile(
     r"(-?[0-9]{1,3}(?:\.[0-9]{1,6})?),(-?[0-9]{1,2}(?:\.[0-9]{1,6})?)\Z"
 )
-_PATHS = frozenset({"/v5/place/text", "/v5/place/around", "/v3/geocode/geo"})
+_PATHS = frozenset(
+    {
+        "/v5/place/text",
+        "/v5/place/around",
+        "/v3/geocode/geo",
+        "/v5/direction/driving",
+        "/v5/direction/walking",
+        "/v5/direction/bicycling",
+        "/v5/direction/motor",
+        "/v3/direction/transit/integrated",
+        "/v4/etd/driving",
+    }
+)
 
 
 def validate_location(value: Any) -> str:
@@ -61,7 +73,13 @@ class AmapClient:
             raise AmapError("invalid_response") from None
         if not isinstance(data, dict):
             raise AmapError("invalid_response")
-        if data.get("status") != "1":
+        accepted = data.get("status") == "1"
+        if path == "/v4/etd/driving":
+            accepted = type(data.get("errcode")) in {int, str} and data["errcode"] in (
+                0,
+                "0",
+            )
+        if not accepted:
             # This includes invalid/unauthorized keys and exhausted quotas.
             raise AmapError("provider_rejected")
         return data

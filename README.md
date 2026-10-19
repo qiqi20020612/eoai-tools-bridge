@@ -1,6 +1,6 @@
 # EOAIC2 Tools Bridge
 
-让 EOAIC2 通过 Home Assistant 公开 LLM API 使用 Tools for Assist 的搜索、天气、地点/路线、计算器、实用工具和媒体播放，并提供独立的高德地点与地址解析工具。当前版本 **v0.7.2**，HA 自动化测试基准 **2026.10.2**，Tools for Assist 固定核对版本 **1.11.0**。
+让 EOAIC2 通过 Home Assistant 公开 LLM API 使用 Tools for Assist 的搜索、天气、地点/路线、计算器、实用工具和媒体播放，并提供独立的高德地点、地址解析与路线工具。当前版本 **v0.8.0**，HA 自动化测试基准 **2026.10.2**，Tools for Assist 固定核对版本 **1.11.0**。
 
 **v0.7.0 接口变更：独立的 `eoai_tools_bridge.search_web` 已移除，所有工具统一经 `call_tool` 执行。** Tools for Assist 的 `llm_intents/search_web` 继续支持。升级须替换旧搜索动作/Functions、明确授权搜索并改读 `result.results`，详见 [迁移说明](docs/MIGRATION_0_7.md)。既有白名单及副作用许可不会自动扩大。
 
@@ -36,17 +36,17 @@ eoai_tools_bridge_amap/geocode
 
 ## 推荐：每个工具独立的 EOAIC2 Function
 
-推荐按需复制下面每个完整 YAML 列表项到 EOAIC2 的 **Functions**；模型直接看到 `search_web`、`calculate` 等工具名及各自原生参数。全部为 `type: script`，底层仍统一调用 `eoai_tools_bridge.call_tool`，脚本固定 API 与工具名，模型无需填写 `api_id/tool_name/tool_args`。v0.7.2 完善全部工具及搜索变体的调用时机、参数格式、能力边界和结果解读；仅修改描述、相关文档、验证测试和发布版本号，Schema 约束、Jinja 脚本、Bridge 运行逻辑与依赖不变。
+推荐按需复制下面每个完整 YAML 列表项到 EOAIC2 的 **Functions**；模型直接看到 `search_web`、`calculate` 等工具名及各自原生参数。全部为 `type: script`，底层仍统一调用 `eoai_tools_bridge.call_tool`，脚本固定 API 与工具名，模型无需填写 `api_id/tool_name/tool_args`。v0.8.0 在既有描述与调用契约上新增高德路线，不改变 Google 路线或其他已有工具的参数/脚本，不新增生产依赖。
 
 描述现已明确英文单位标识与字符串数量、英文维基百科、按需求选择 YouTube 条数、搜索链接缺失及补充查询条件、两种地图的位置/字段差异、地址候选消歧、固定起点的 Google 路线估算、天气覆盖和播放兼容性。详见 [逐工具调用与结果说明](docs/EOAIC2_FUNCTIONS.md#调用与结果解读)。**HACS 更新不会替换已保存的 Functions**；从 v0.7.1 升级后，手动替换所选 YAML 列表项才能使用新描述，不需要修改全局提示词。
 
-**先做选择：**删除旧的 `web_search` Function，使用新的 **`search_web`**，不要重复添加两种搜索函数；三种 `search_web` 示例只选一份。**Google 与高德的 `find_places` 也只能启用一份**，Functions 和桥接白名单均只保留选中的地点组合；两者 API 身份保持各自原值，不自动切换提供商。清单覆盖 12 个 API/工具组合，因为地点二选一，一次最多启用其中 11 个独立执行 Function。原生 HA 控制 Functions 保留。
+**先做选择：**删除旧的 `web_search` Function，使用新的 **`search_web`**，三种搜索示例只选一份。**Google/高德的 find_places 二选一，get_route 也二选一**；Functions 和桥接白名单保留所选身份，不自动切换。当前覆盖 13 个 API/工具组合（共 15 份 YAML，含搜索变体），因地点和路线各有一组同名互斥，一次最多启用 11 个独立执行 Function。原生 HA 控制 Functions 保留。
 
 | 工具 | 固定 API/工具组合 | 独立 YAML |
 | --- | --- | --- |
 | 网页搜索 `search_web` | `llm_intents/search_web` | [通用 query 版](examples/eoaic2_search_web.yaml) · [Brave LLM Context 版](examples/eoaic2_search_web_brave_llm_context.yaml) · [Tavily 版](examples/eoaic2_search_web_tavily.yaml)，三选一 |
 | Google `find_places` | `llm_intents/find_places` | [Google 地点](examples/eoaic2_find_places_google.yaml)，与高德地点二选一 |
-| `get_route` | `llm_intents/get_route` | [Google 路线](examples/eoaic2_get_route.yaml) |
+| Google `get_route` | `llm_intents/get_route` | [Google 路线](examples/eoaic2_get_route.yaml)，与高德路线二选一 |
 | `search_wikipedia` | `llm_intents/search_wikipedia` | [维基百科](examples/eoaic2_search_wikipedia.yaml) |
 | `search_youtube` | `llm_intents/search_youtube` | [YouTube 搜索](examples/eoaic2_search_youtube.yaml) |
 | `get_weather_forecast` | `weather_forecast/get_weather_forecast` | [天气](examples/eoaic2_get_weather_forecast.yaml) |
@@ -56,6 +56,7 @@ eoai_tools_bridge_amap/geocode
 | `play_video` | `media_services/play_video` | [视频播放](examples/eoaic2_play_video.yaml)，另需副作用许可 |
 | 高德 `find_places` | `eoai_tools_bridge_amap/find_places` | [高德地点](examples/eoaic2_find_places_amap.yaml)，与 Google 地点二选一 |
 | `geocode` | `eoai_tools_bridge_amap/geocode` | [高德地址解析](examples/eoaic2_geocode.yaml) |
+| 高德 `get_route` | `eoai_tools_bridge_amap/get_route` | [高德路线](examples/eoaic2_get_route_amap.yaml)，与 Google 路线二选一 |
 
 [完整 Functions 指南](docs/EOAIC2_FUNCTIONS.md) 包含以上所有可复制代码块、参数表、默认值与类型说明。网页搜索必须按实际提供商选择：
 
@@ -108,14 +109,24 @@ eoai_tools_bridge_amap/geocode
 
 在桥接选项中填写自己的 **高德 Web 服务 API Key**（密码输入框），可选默认城市及附近中心。Key 由 HA 配置存储管理，不是文件级加密；不要放入 Functions、工具参数、版本库或发布包。没有 Key 不影响既有上游工具。只填 Key 不会启用网关或加入白名单。
 
-高德 API 为 **`eoai_tools_bridge_amap`**，包含只读 `find_places` 和 `geocode`。它们使用同一发现/检查/调用链路，均要求原始管理员与精确授权；直接选用原生 LLM API 也不能绕过桥接权限。
+高德 API 为 **`eoai_tools_bridge_amap`**，包含只读 `find_places`、`geocode` 与下文的 `get_route`。它们使用同一发现/检查/调用链路，均要求原始管理员与精确授权；直接选用原生 LLM API 也不能绕过桥接权限。
 
 - `find_places`：`query` 必填（去空白后 1–80 字符）；可选 `city/location/radius/sort/types/limit`。未提供位置且无配置中心时按关键词查询；显式或配置中心则查询附近地点。坐标为 **GCJ-02 经度,纬度**，小数最多 6 位，不自动读取 HA 家庭/设备位置，也不猜测转换 WGS84/BD-09。城市用于严格限制检索范围。默认半径 5000 米、综合排序、前 5 项；最多 20 项，仅取第一页。
 - `radius`（1–50000 米）和 `sort` 要求位置；`sort=distance` 还必须给 `types`（1–10 个六位 POI 类型码，以 `|` 分隔），因为高德仅关键词查询的距离排序不生效。参数组合不满足时拒绝请求，不静默改换语义。
 - `geocode`：`address` 必填（1–500 字符），可选 `city`，继承配置城市。返回最多 5 个地址候选、坐标、匹配级别及 `ambiguous`；多候选须消歧，不能自动把首条当作目的地。返回坐标与附近查询采用相同顺序和参考系。
-- 结果包含 `source=amap`、`coordinate_system=GCJ-02` 及 `results`。名称/地址/坐标、电话、营业时间和评分仅在高德实际提供时保留，不计算“现在营业”，不承诺与 Google 字段或评分等价。合法空结果为 `results=[]`。
+- 地点/地址解析结果包含 `source=amap`、`coordinate_system=GCJ-02` 及 `results`。名称/地址/坐标、电话、营业时间和评分仅在高德实际提供时保留，不计算“现在营业”，不承诺与 Google 字段或评分等价。合法空结果为 `results=[]`。
 
-可直接使用 [高德动作示例](examples/amap_actions.yaml)。详细字段映射、错误与边界见 [高德说明](docs/AMAP.md)。上游 `llm_intents/find_places`、`llm_intents/get_route` 仍代表原 Google 工具，不会自动改为高德；迁移须更改身份与白名单。高德路线留待 v0.8。
+可直接使用 [高德动作示例](examples/amap_actions.yaml)。详细字段映射、错误与边界见 [高德说明](docs/AMAP.md)。上游 `llm_intents/find_places`、`llm_intents/get_route` 仍代表原 Google 工具，不会自动改为高德；迁移须更改身份与白名单。
+
+## 高德路线：默认家庭地址或显式起点
+
+v0.8.0 新增 `eoai_tools_bridge_amap/get_route`。在 Bridge 选项中可填**高德家庭地址**（或可信 GCJ-02 坐标）和**默认出行方式**。调用时 destination 必填；**省略 origin 用此家庭地址，显式 origin 覆盖它**，没有配置家庭地址也可通过 origin 查询两地之间的路线。家庭地址与附近搜索中心独立，不读取 Google 配置或 HA 实时位置。
+
+- 支持驾车、步行、自行车、公交与摩托车的独立接口；地址先用高德解析，多候选时返回候选供消歧，不取第一项继续算路。
+- 仅 DRIVE/TRANSIT 接受带明确时区、未来 7 天内的 departure_time；其他模式、历史/无效时间拒绝，不替换为当前路线。未来驾车及摩托车接口需要额外提供商权限，本次测试 Key 的请求被提供商拒绝，不降级为其他方式。
+- 先判断顶层 success，再读 result.status；只有 ok 才有 result.route。距离/耗时为米/秒，并含可读文本；无匹配、缺公交城市、候选歧义或无路线不会编造零耗时。20 秒总预算内每次新 HTTP 前重查权限/配置，不重试或缓存。
+
+按 [路线配置与迁移说明](docs/AMAP_ROUTES.md) 添加精确白名单并替换同名 Function；HACS 不会自动更新已保存的 Functions。公共坐标的驾车/步行/骑行/公交及未来公交已独立联网成功，真实 HA/模型/升级与额外权限端点的成功验收分开记录。
 
 ## 通用调用、安全与结果
 
@@ -175,6 +186,6 @@ uv run --no-sync python scripts/build_release.py
 
 开发/CI 固定 HA Core 2026.10.2、配套测试插件 0.13.373。测试下载并校验固定 SHA-256 的 EOAIC2 4 个文件与 Tools for Assist 两套 20/22 个文件，仅在忽略缓存中使用，不打包。pytest 禁止网络，使用真实 HA 注册/认证/Schema/Script 及未修改的原版工具代码，提供商与设备使用模拟后端。源码依据见 [UPSTREAM.md](docs/UPSTREAM.md)。
 
-v0.6.1 的总体验收已由用户报告通过；不据此补写各提供商/物理设备证据。v0.7 的高德真实 HTTP、v0.7.1 的 601 项自动化及恢复后通过的 CI，以及 v0.7.2 描述验证与待完成的 HA/EOAIC2/升级验收分开记录在 [TESTING.md](docs/TESTING.md)。描述优化不等于模型行为已验收；高德路线将在 v0.8.0 单独开发，完整真实联调继续按既定 0.x 路线推进。
+用户报告 v0.7.2 总体验收通过，未补写逐项提供商或物理设备证据。各版本自动化、独立高德 HTTP 验证与真实用户环境验收分开记录在 [TESTING.md](docs/TESTING.md)。v0.8.0 交付高德路线，后续真实联调、额外接口权限和未完成门槛继续按既定 0.x 路线推进，不直接跳至 1.0。
 
 [版本记录](docs/CHANGELOG.md) · [v0.7 迁移](docs/MIGRATION_0_7.md) · [许可](LICENSE)

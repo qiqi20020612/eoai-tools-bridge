@@ -67,7 +67,7 @@ def test_description_patch_preserves_v071_schema_and_script(file):
     assert hashlib.sha256(serialized.encode()).hexdigest() == V071_CONTRACT_SHA256[file]
 
 
-@pytest.mark.parametrize("file", V071_CONTRACT_SHA256)
+@pytest.mark.parametrize("file", [*V071_CONTRACT_SHA256, "get_route_amap"])
 def test_all_model_descriptions_are_present_and_bounded(file):
     spec = yaml.safe_load((ROOT / "examples" / f"eoaic2_{file}.yaml").read_text())[0][
         "spec"

@@ -1,5 +1,5 @@
 # Configure the optional Amap Web Service key in bridge options, never here.
-# Enable call_tool, allow both exact pairs below, and use the original admin.
+# Enable call_tool, allow only the exact pairs you use, and use the original admin.
 - action: eoai_tools_bridge.call_tool
   data:
     api_id: eoai_tools_bridge_amap
@@ -21,3 +21,13 @@
       address: 北京市东城区天安门
       city: 北京市
   response_variable: location_response
+- action: eoai_tools_bridge.call_tool
+  data:
+    api_id: eoai_tools_bridge_amap
+    tool_name: get_route
+    tool_args:
+      origin: "116.434307,39.90909"
+      destination: "116.397499,39.908722"
+      mode: DRIVE
+  response_variable: route_response
+# To use configured home, omit origin; do not substitute the nearby search center.

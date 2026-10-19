@@ -1,0 +1,98 @@
+# Choose ONE get_route Function: Google OR Amap. Never append both.
+# Configure Amap home/default mode in bridge options; an explicit origin overrides home.
+# Requires call_tool enabled, eoai_tools_bridge_amap/get_route allowed, original admin.
+- spec:
+    name: get_route
+    description: >-
+      Estimate an Amap route from a specified origin or the configured Amap home
+      when origin is omitted. Use known addresses or verified GCJ-02 points;
+      never guess user/device location or convert coordinates implicitly. Read
+      result.status before result.route: needs_clarification returns address
+      candidates for the named endpoint; no_match, city_required and no_route
+      contain no usable route. Resolve the gap instead of choosing the first
+      candidate. An ok route provides numeric meters/seconds plus formatted
+      distance/duration, not turn-by-turn navigation or guaranteed arrival.
+      Future driving and motorcycle routing require extra provider authorization;
+      failures do not fall back to another time, mode or Google. result.departure_time
+      is the effective UTC time used when explicitly requested.
+    parameters:
+      type: object
+      properties:
+        destination:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: >-
+            Required address/place string, 1-500 characters after trimming, or
+            verified GCJ-02 'longitude,latitude' with no internal spaces and at
+            most 6 decimals (longitude -180..180, latitude -90..90). Include known
+            city details. No default; not a relative location such as here/home.
+        origin:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: >-
+            Optional address/place or verified GCJ-02 'longitude,latitude' string,
+            same format and limits as destination. Overrides configured Amap home.
+            Omit to use home; if no home is configured, provide this field. Do not
+            send an empty/null value, here/home, or guessed live coordinates.
+        mode:
+          type: string
+          enum: [DRIVE, WALK, BICYCLE, TRANSIT, TWO_WHEELER]
+          description: >-
+            Optional exact string DRIVE, WALK, BICYCLE, TRANSIT or TWO_WHEELER
+            (motorcycle, not electric bicycle). Omitted uses the configured Amap
+            route mode, or DRIVE if unset. Motorcycle service needs separate
+            provider authorization; modes are never silently substituted.
+        departure_time:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: >-
+            Optional future ISO 8601 string with explicit timezone, e.g.
+            '2026-10-21T09:00:00+08:00', within 7 days. Only DRIVE/TRANSIT support
+            this field; omit for immediate departure. Invalid, naive or past
+            values fail. Driving uses whole seconds; transit uses whole minutes
+            in Asia/Shanghai. This is departure, not an arrival deadline.
+        origin_city:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: >-
+            Optional origin city name or citycode string, 1-80 trimmed characters.
+            Omitted uses the bridge city as an address-resolution hint. TRANSIT
+            requires a city from resolution or this/configured value, especially
+            for coordinates; use a city name or 3-4 digit citycode, not adcode.
+        destination_city:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: >-
+            Optional destination city name or citycode string, 1-80 trimmed
+            characters. Same default/format as origin_city; specify separately
+            for cross-city TRANSIT, not a guessed copy of the origin city.
+      required: [destination]
+      additionalProperties: false
+  function:
+    type: script
+    sequence:
+      - action: eoai_tools_bridge.call_tool
+        data: >-
+          {% set args = {'destination': destination} %}
+          {% if origin is defined %}
+            {% set args = dict(args, origin=origin) %}
+          {% endif %}
+          {% if mode is defined %}
+            {% set args = dict(args, mode=mode) %}
+          {% endif %}
+          {% if departure_time is defined %}
+            {% set args = dict(args, departure_time=departure_time) %}
+          {% endif %}
+          {% if origin_city is defined %}
+            {% set args = dict(args, origin_city=origin_city) %}
+          {% endif %}
+          {% if destination_city is defined %}
+            {% set args = dict(args, destination_city=destination_city) %}
+          {% endif %}
+          {{ {'api_id': 'eoai_tools_bridge_amap', 'tool_name': 'get_route', 'tool_args': args} }}
+        response_variable: _function_result

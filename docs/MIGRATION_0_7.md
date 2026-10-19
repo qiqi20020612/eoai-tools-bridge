@@ -61,3 +61,11 @@ EOAIC2 推荐采用 [独立 search_web](../examples/eoaic2_search_web.yaml)，�
 通过 HACS/Release 更新 Bridge 后，到 EOAIC2 Functions **替换已有的所选完整 YAML 列表项**。HACS 不自动改写这些配置；不要在旧列表后重复追加同名 Function。仍只选一份 search_web 和一份 Google/高德 find_places，不因优化描述改换提供商、添加参数或扩大白名单。仍使用高级 call_allowed_tool 的用户不会自动获得这些独立工具描述，可按需选择独立方案。
 
 新版说明覆盖英文单位/英文维基词条、YouTube 数量和补充查询、来源链接缺失、地图候选/真实坐标、路线和天气估算范围、计算数值与日期结果、播放器兼容性。建议用原本出现问题的对话重新验收；没有实质信息缺口时不要求模型反复搜索，返回成功也不等于有匹配数据或设备已播放。完整差异见 [Functions 指南](EOAIC2_FUNCTIONS.md#调用与结果解读)。高德路线不在本补丁中，按规划留到 v0.8.0。
+
+## 从 v0.7.2 更新至 v0.8.0
+
+既有四个服务、白名单/管理员与副作用许可、v0.6.1 裁剪、Google get_route 和其他上游工具继续保留。新增高德 get_route 需要手动选择 [高德路线 Function](../examples/eoaic2_get_route_amap.yaml)，删除/替换同名 Google Function，并在精确白名单选择 eoai_tools_bridge_amap/get_route；不自动改提供商或复制 Google 的家庭地址配置。
+
+在 Bridge 选项设置可选家庭地址及默认出行方式。origin 省略时用该地址，显式 origin 优先；家庭地址空缺时必须提供起点，不复用附近中心或 HA 设备位置。更新无需重建配置项，已有权限/选项仍保持原值，新增工具不会自动获权。HACS 仍只更新 Bridge，Functions 手工替换且不能重复同名。
+
+高德时间严格校验，不能套用 Google 无效/过去时间的回退行为；返回也需改为先看 result.status、ok 时读 result.route，而非 Google 的 result.result。多候选须消歧、公交坐标须有城市；未来驾车及摩托车请求的提供商权限另行确认，失败不降级。完整参数、单位、时间和联网验证差异见 [高德路线说明](AMAP_ROUTES.md)。

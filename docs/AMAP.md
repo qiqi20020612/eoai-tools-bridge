@@ -1,6 +1,6 @@
-# 高德地点与位置解析（v0.7）
+# 高德地点与位置解析（v0.8）
 
-高德实现由本项目维护，通过 HA 公开 LLM API 注册为 **`eoai_tools_bridge_amap`**，不会接管 Tools for Assist 的 `llm_intents`。功能参考其 1.11.0 的 `google_places.py`；新增地址解析为当前位置查询与后续路线开发提供独立公共能力。高德路线在 v0.8，逆地理编码、自动定位与坐标转换尚未实现。
+高德实现由本项目维护，通过 HA 公开 LLM API 注册为 **`eoai_tools_bridge_amap`**，不会接管 Tools for Assist 的 `llm_intents`。地点功能参考其 1.11.0 的 `google_places.py`；地址解析供已知地址查询及路线复用。v0.8.0 已新增 [高德 get_route](AMAP_ROUTES.md)，支持默认家庭地址和显式起点；本页的 find_places/geocode 参数与结果保持不变，逆地理编码、自动定位与坐标转换尚未实现。
 
 ## 配置与权限
 
@@ -41,7 +41,7 @@ eoai_tools_bridge_amap/geocode
 
 ## 结果映射
 
-通用响应的 `result` 含 `source=amap`、`coordinate_system=GCJ-02`、`results`、`returned_count` 和 `results_limited`。`returned_count` 为客户端输出条数；`results_limited` 仅说明客户端因数量上限省略了本次响应里的行，不表示高德全库总量，也不保证更多页存在。后续通用结果预算可能继续裁剪正文，因此 `truncated=true` 时返回计数可能大于可见项数。`geocode` 的 `ambiguous=true` 依据提供商原始候选数大于 1 判断，即使裁剪后只看到一项仍需消歧；`false` 不保证唯一精确地址，须结合地址、行政区及 `match_level` 判断，空列表仍是无匹配。未实现逆地理编码、自动定位、坐标转换或路线。
+本页两个工具的通用响应 `result` 含 `source=amap`、`coordinate_system=GCJ-02`、`results`、`returned_count` 和 `results_limited`。`returned_count` 为客户端输出条数；`results_limited` 仅说明客户端因数量上限省略了本次响应里的行，不表示高德全库总量，也不保证更多页存在。后续通用结果预算可能继续裁剪正文，因此 `truncated=true` 时返回计数可能大于可见项数。`geocode` 的 `ambiguous=true` 依据提供商原始候选数大于 1 判断，即使裁剪后只看到一项仍需消歧；`false` 不保证唯一精确地址，须结合地址、行政区及 `match_level` 判断，空列表仍是无匹配。get_route 则使用独立的 status/route 正文，见路线说明。
 
 | 高德字段 | 桥接结果字段 | 与原版 Google 工具的差异 |
 | --- | --- | --- |
@@ -58,7 +58,7 @@ POI 请求只选择 `business` 扩展，避免请求不需要的照片等字段�
 
 ## 请求、失败与预算
 
-生产仅允许 `https://restapi.amap.com` 的三个固定端点：`/v5/place/text`、`/v5/place/around`、`/v3/geocode/geo`。Key 仅由可信配置填入请求，不接受模型提供 URL、Headers 或 Key。不跟随重定向，不重试、不缓存响应；单次 HTTP 总超时 10 秒，响应解码前按流限制 **256 KiB**。工具调用仍受既有 20 秒通用异步超时及 16 KiB 结果预算约束，沿用 v0.6.1 嵌套裁剪。
+地点/地址解析只使用 `https://restapi.amap.com` 的三个固定端点：`/v5/place/text`、`/v5/place/around`、`/v3/geocode/geo`；v0.8.0 路线另增加 [六个固定路线端点](AMAP_ROUTES.md#出行方式与时间映射)。Key 仅由可信配置填入请求，不接受模型提供 URL、Headers 或 Key。不跟随重定向，不重试、不缓存响应；单次 HTTP 总超时 10 秒，响应解码前按流限制 **256 KiB**。工具调用仍受既有 20 秒通用异步超时及 16 KiB 结果预算约束，沿用 v0.6.1 嵌套裁剪。
 
 缺少/未授权 Key、配额不足、HTTP 错误、网络超时、超大/无效 JSON 或缺失必要字段均使用固定错误，原始 URL、响应和异常文本不会进入桥接日志/结果。`call_tool` 保留既有错误契约：原生字段验证失败为 `invalid_args`；提供商、缺 Key 或工具内部组合检查失败为 `upstream_error`，`result=null`、`outcome_unknown=false`。原生工具内部仅返回固定类别，不回显服务端 `info`。取消直接传播，不转为成功或重试。
 

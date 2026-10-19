@@ -1,5 +1,6 @@
 """Bridge-owned read-only Amap tools, subject to the existing gateway policy."""
 
+import asyncio
 import re
 from typing import Any
 
@@ -10,7 +11,13 @@ from homeassistant.helpers import llm
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .amap_client import AmapClient, AmapError, validate_location
-from .const import DOMAIN, SERVICE_CALL_TOOL
+from .amap_routes import (
+    ROUTE_MODES,
+    AmapRoutes,
+    validate_departure_time,
+    validate_endpoint,
+)
+from .const import DOMAIN, SERVICE_CALL_TOOL, TOOL_TIMEOUT_SECONDS
 from .policy import async_is_admin, get_policy
 from .validation import validate_query
 
@@ -18,6 +25,8 @@ AMAP_API_ID = "eoai_tools_bridge_amap"
 CONF_AMAP_KEY = "amap_api_key"
 CONF_AMAP_CITY = "amap_city"
 CONF_AMAP_LOCATION = "amap_location"
+CONF_AMAP_HOME = "amap_home_address"
+CONF_AMAP_MODE = "amap_route_mode"
 _KEY = re.compile(r"[a-fA-F0-9]{32}\Z")
 
 
@@ -57,6 +66,7 @@ def normalize_amap_options(options: dict[str, Any]) -> dict[str, str]:
         (CONF_AMAP_KEY, None),
         (CONF_AMAP_CITY, validate_place_text),
         (CONF_AMAP_LOCATION, validate_location),
+        (CONF_AMAP_HOME, validate_endpoint),
     ):
         if field not in options:
             continue
@@ -71,6 +81,11 @@ def normalize_amap_options(options: dict[str, Any]) -> dict[str, str]:
             else:
                 value = validator(value)
         values[field] = value
+    if CONF_AMAP_MODE in options:
+        mode = options[CONF_AMAP_MODE]
+        if not isinstance(mode, str) or mode not in ROUTE_MODES:
+            raise vol.Invalid("Expected a supported route mode")
+        values[CONF_AMAP_MODE] = mode
     return values
 
 
@@ -79,6 +94,8 @@ def amap_serializer(node: Any) -> Any:
     if node is validate_place_text:
         return {"type": "string", "minLength": 1, "maxLength": 80, "pattern": r"\S"}
     if node is validate_query:
+        return {"type": "string", "minLength": 1, "maxLength": 500, "pattern": r"\S"}
+    if node is validate_endpoint or node is validate_departure_time:
         return {"type": "string", "minLength": 1, "maxLength": 500, "pattern": r"\S"}
     if node is validate_location:
         return {
@@ -125,7 +142,7 @@ class AmapTool(llm.Tool):
                 },
                 extra=vol.PREVENT_EXTRA,
             )
-        else:
+        elif name == "geocode":
             self.description = (
                 "Resolve an address to Amap GCJ-02 longitude/latitude candidates. "
                 "Use city to disambiguate. Return up to 5 candidates; ask the user "
@@ -138,6 +155,29 @@ class AmapTool(llm.Tool):
                 },
                 extra=vol.PREVENT_EXTRA,
             )
+        elif name == "get_route":
+            self.description = (
+                "Estimate an Amap route from an explicit origin or configured home. "
+                "Endpoints accept addresses or verified GCJ-02 longitude,latitude. "
+                "Never infer user/device location; multiple address candidates need "
+                "clarification. DRIVE/WALK/BICYCLE/TRANSIT/TWO_WHEELER map to distinct "
+                "Amap endpoints; motorcycle and future driving need extra permission. "
+                "Only DRIVE/TRANSIT support a future timezone-aware departure_time "
+                "within 7 days. Read status before route; times are estimates."
+            )
+            self.parameters = vol.Schema(
+                {
+                    vol.Required("destination"): validate_endpoint,
+                    vol.Optional("origin"): validate_endpoint,
+                    vol.Optional("mode"): vol.In(list(ROUTE_MODES)),
+                    vol.Optional("departure_time"): validate_departure_time,
+                    vol.Optional("origin_city"): validate_place_text,
+                    vol.Optional("destination_city"): validate_place_text,
+                },
+                extra=vol.PREVENT_EXTRA,
+            )
+        else:
+            raise ValueError("Unknown Amap tool")
 
     async def async_call(
         self,
@@ -183,13 +223,43 @@ class AmapTool(llm.Tool):
             client = AmapClient(async_get_clientsession(hass), key)
             if self.name == "find_places":
                 data = await client.find_places(city=city, **args)
-            else:
+            elif self.name == "geocode":
                 data = await client.geocode(city=city, **args)
+            else:
+                origin = args.pop("origin", config.get(CONF_AMAP_HOME, ""))
+                if not origin:
+                    raise AmapError("origin_missing")
+
+                async def permitted() -> None:
+                    if (
+                        not await async_is_admin(hass, call)
+                        or call.context.user_id != original_user_id
+                        or get_policy(hass) != policy
+                        or dict(self._entry.options) != options
+                    ):
+                        raise AmapError("permission_denied")
+
+                async with asyncio.timeout(TOOL_TIMEOUT_SECONDS):
+                    data = await AmapRoutes(client, permitted).get_route(
+                        origin=origin,
+                        mode=args.pop("mode", config.get(CONF_AMAP_MODE, "DRIVE")),
+                        origin_city=args.pop("origin_city", city),
+                        destination_city=args.pop("destination_city", city),
+                        **args,
+                    )
+                    await permitted()
+                data["origin_source"] = (
+                    "argument"
+                    if "origin" in tool_input.tool_args
+                    else "configured_home"
+                )
             return llm.ToolResult(data=data)
         except vol.Invalid:
             return llm.ToolResult(data={"error": "invalid_args"}, error=True)
         except AmapError as err:
             return llm.ToolResult(data={"error": str(err)}, error=True)
+        except TimeoutError:
+            return llm.ToolResult(data={"error": "request_failed"}, error=True)
 
 
 class AmapAPI(llm.API):
@@ -197,7 +267,9 @@ class AmapAPI(llm.API):
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         super().__init__(hass=hass, id=AMAP_API_ID, name="EOAIC2 Tools Bridge: Amap")
-        self._tools = [AmapTool(entry, name) for name in ("find_places", "geocode")]
+        self._tools = [
+            AmapTool(entry, name) for name in ("find_places", "geocode", "get_route")
+        ]
 
     async def async_get_api_instance(self, context: llm.LLMContext) -> llm.APIInstance:
         return llm.APIInstance(

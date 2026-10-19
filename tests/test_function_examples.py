@@ -171,6 +171,21 @@ CASES = [
         {"address": "北京市东城区天安门"},
         {"city": "北京市"},
     ),
+    ExampleCase(
+        "get_route_amap",
+        "eoai_tools_bridge_amap",
+        "get_route",
+        None,
+        "",
+        {"destination": "116.397499,39.908722"},
+        {
+            "origin": "116.434307,39.90909",
+            "mode": "TRANSIT",
+            "departure_time": "2026-10-21T09:00:00+08:00",
+            "origin_city": "北京市",
+            "destination_city": "北京市",
+        },
+    ),
 ]
 PARAMETERS = [
     pytest.param(
@@ -325,15 +340,16 @@ async def test_original_script_maps_native_arguments_without_nested_model_fields
     assert passed_context.context is api.llm_context.context
 
 
-def test_all_twelve_tool_identities_have_static_standalone_examples():
+def test_all_thirteen_tool_identities_have_static_standalone_examples():
     pairs = {(case.api, case.name) for case in CASES}
     assert pairs == AUDITED_READ_ONLY_TOOLS | {
         ("media_services", "play_video"),
         ("eoai_tools_bridge_amap", "find_places"),
         ("eoai_tools_bridge_amap", "geocode"),
+        ("eoai_tools_bridge_amap", "get_route"),
     }
-    assert len(pairs) == 12
-    assert len({case.file for case in CASES}) == 14  # 12 tools + 2 search variants
+    assert len(pairs) == 13
+    assert len({case.file for case in CASES}) == 15  # 13 tools + 2 search variants
     for file in {case.file for case in CASES}:
         entries = yaml.safe_load(
             (ROOT / "examples" / f"eoaic2_{file}.yaml").read_text()
@@ -353,14 +369,21 @@ def test_all_twelve_tool_identities_have_static_standalone_examples():
 
 
 @pytest.mark.parametrize("provider", ["google", "amap"])
+@pytest.mark.parametrize("route", ["google", "amap"])
 @pytest.mark.parametrize(
     "search", ["search_web", "search_web_brave_llm_context", "search_web_tavily"]
 )
-def test_recommended_selection_has_no_duplicate_function_names(provider, search):
+def test_recommended_selection_has_no_duplicate_function_names(provider, route, search):
     files = {
-        case.file for case in CASES if case.name not in {"find_places", "search_web"}
+        case.file
+        for case in CASES
+        if case.name not in {"find_places", "search_web", "get_route"}
     }
-    files |= {search, f"find_places_{provider}"}
+    files |= {
+        search,
+        f"find_places_{provider}",
+        "get_route" if route == "google" else "get_route_amap",
+    }
     names = [
         yaml.safe_load((ROOT / "examples" / f"eoaic2_{file}.yaml").read_text())[0][
             "spec"
@@ -442,7 +465,7 @@ def test_documentation_code_blocks_match_all_static_examples():
     blocks = re.findall(
         r"<!-- example: ([a-z0-9_]+\.yaml) -->\n```yaml\n(.*?)\n```", document, re.S
     )
-    assert len(blocks) == len({case.file for case in CASES}) == 14
+    assert len(blocks) == len({case.file for case in CASES}) == 15
     assert {file for file, _ in blocks} == {
         f"eoaic2_{case.file}.yaml" for case in CASES
     }

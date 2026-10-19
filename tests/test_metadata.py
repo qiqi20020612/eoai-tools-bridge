@@ -78,6 +78,8 @@ def test_runtime_english_translation_and_chinese_keys():
         "amap_api_key",
         "amap_city",
         "amap_location",
+        "amap_home_address",
+        "amap_route_mode",
     }
 
 

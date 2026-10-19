@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "添加工具桥接",
-        "description": "所有工具统一经 call_tool 执行，要求明确启用、精确白名单与原始有效管理员身份。网页搜索提供商在 Tools for Assist 中配置；高德地点及地址解析的可选 Web 服务密钥在桥接选项中配置。安装不要求密钥，也不授予工具权限。v0.7 已移除独立 search_web 动作，请更新原有 Functions 和自动化。"
+        "description": "所有工具统一经 call_tool 执行，要求明确启用、精确白名单与原始有效管理员身份。网页搜索提供商在 Tools for Assist 中配置；高德地点及地址解析的可选 Web 服务密钥在桥接选项中配置。安装不要求密钥，也不授予工具权限。v0.7 已移除独立 search_web 动作，请更新原有 Functions 和自动化。 高德路线的家庭地址与默认出行方式可在桥接选项中配置，配置本身不授予工具权限。"
       }
     },
     "abort": {
@@ -57,20 +57,22 @@
     "step": {
       "init": {
         "title": "受控工具调用",
-        "description": "每行填写一个确切 API/工具组合，最多 32 项，不支持通配符。所有执行（含网页搜索）均要求启用 call_tool、精确白名单和原始有效管理员身份；没有 user_id 的语音/自动化不能调用。只读查询和受限数值计算器不需要副作用许可；播放、写入和未知工具另行授权。高德配置可选且不授予权限，需明确允许 eoai_tools_bridge_amap/find_places 或 eoai_tools_bridge_amap/geocode。Web 服务密钥仅填此处，不填 Functions。默认城市限制地点搜索范围；附近中心必须为已采用 GCJ-02 的经度,纬度，小数最多 6 位。不自动读取 HA 家庭/设备位置，不自动转换坐标。保存立即生效。Home Control 继续使用 EOAIC2 原生 HA 控制。",
+        "description": "每行填写一个确切 API/工具组合，最多 32 项，不支持通配符。所有执行（含网页搜索）均要求启用 call_tool、精确白名单和原始有效管理员身份；没有 user_id 的语音/自动化不能调用。只读查询和受限数值计算器不需要副作用许可；播放、写入和未知工具另行授权。高德配置可选且不授予权限，需明确允许 eoai_tools_bridge_amap/find_places 或 eoai_tools_bridge_amap/geocode。Web 服务密钥仅填此处，不填 Functions。默认城市限制地点搜索范围；附近中心必须为已采用 GCJ-02 的经度,纬度，小数最多 6 位。不自动读取 HA 家庭/设备位置，不自动转换坐标。保存立即生效。Home Control 继续使用 EOAIC2 原生 HA 控制。 高德路线须明确允许 eoai_tools_bridge_amap/get_route。未传 origin 时使用此处家庭地址，模型显式起点可覆盖；附近中心与家庭地址独立。默认出行方式亦可按次覆盖，不读取 Google 配置或 HA 家庭/设备位置。",
         "data": {
           "enabled": "启用 call_tool",
           "allowed_tools": "API/工具白名单",
           "allow_side_effects": "允许副作用或无只读依据的工具",
           "amap_api_key": "高德 Web 服务 API Key（可选；留空清除）",
           "amap_city": "高德默认城市（可选）",
-          "amap_location": "高德附近中心：GCJ-02 经度,纬度（可选）"
+          "amap_location": "高德附近中心：GCJ-02 经度,纬度（可选）",
+          "amap_home_address": "高德家庭地址或 GCJ-02 经度,纬度（可选）",
+          "amap_route_mode": "高德路线默认出行方式"
         }
       }
     },
     "error": {
       "invalid_allowlist": "请输入最多 32 个准确的 API/工具标识，每行一个；启用调用时白名单不能为空。",
-      "invalid_amap_options": "Web 服务 Key 须为 32 位十六进制；城市最多 80 字符；中心采用 GCJ-02 经度,纬度，小数最多 6 位，经度 -180~180、纬度 -90~90。可选字段可留空。"
+      "invalid_amap_options": "Web 服务 Key 须为 32 位十六进制；城市最多 80 字符；中心采用 GCJ-02 经度,纬度，小数最多 6 位，经度 -180~180、纬度 -90~90。可选字段可留空。 家庭地址不超过 500 字符，也可填有效 GCJ-02 坐标；不能填写“这里/我家”等相对位置，出行方式须选择所列选项。"
     }
   }
 }

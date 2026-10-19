@@ -146,3 +146,15 @@ Key 为可选可信配置，不在模型参数中出现；仅固定 HTTPS 端点
 - [天气](https://github.com/skye-harris/llm_intents/blob/198e37885fe06e6452d2d6e26bc5e532b1686acc/custom_components/llm_intents/weather.py)、[日期](https://github.com/skye-harris/llm_intents/blob/198e37885fe06e6452d2d6e26bc5e532b1686acc/custom_components/llm_intents/date_info.py)、前述计算与媒体实现：天气直接返回可用预报文本；日期为公历日期与英文星期；计算表达式 value 是字符串、聚合是数字且受既有数值限制；播放器自动发现检查 tv/receiver 与 PLAY_MEDIA，成功仅证明服务方法返回，URL 支持和实际播放仍需设备验收。
 
 另核对 [高德 POI 2.0](https://lbs.amap.com/api/webservice/guide/api/newpoisearch) 的城市/坐标说明与 [地理编码](https://lbs.amap.com/api/webservice/guide/api/georegeo) 的 city、经度/纬度和匹配级别说明；只映射本项目已实现参数，未暴露官方接口的其他能力。geocode ambiguous 按原始候选数判断，不代表置信度。高德路线仍在 v0.8.0 单独开发，本次不改 Google get_route 或新增路线能力。
+
+## v0.8.0：高德路线、家庭地址与显式起点
+
+2026-10-20 按既定路线新增本项目自己的 get_route，不修改 Tools for Assist、EOAIC2 或 HA Core。Google 原生起点行为继续由原工具保留；高德使用 Bridge 的可选家庭地址与默认出行方式，显式 origin 优先。起点不是现有附近中心，也不读取上游私有配置或 HA 设备位置。
+
+主要接口依据为 [路径规划 2.0](https://lbs.amap.com/api/webservice/guide/api/newroute)、[公交 v3](https://lbs.amap.com/api/webservice/guide/api/direction)、[未来驾车 ETD](https://lbs.amap.com/api/webservice/guide/api-advanced/advanced-path) 和 [摩托车](https://lbs.amap.com/api/logistic-service/guide/cycling-service/direction-motor)。使用国内 restapi.amap.com 的固定端点，不混用海外服务、SDK 或电动自行车来替代摩托车。具体映射、单位、时间与未实现参数见 [AMAP_ROUTES.md](AMAP_ROUTES.md)。
+
+公交选择已公开支持城市名和出发日期/时间的 v3 接口；按中国时区分钟发送，避免把 v5 citycode 误当 adcode 或混用时间格式。未来驾车走 v4 ETD 单时间点，读取其 errcode 成功状态，验证返回毫秒时间点与请求秒时间戳、路线 pathindex，并将分钟转换为秒。WALK/BICYCLE/TWO_WHEELER 不接受显式出发时间；没有可映射能力时明确失败，不改为当前驾车。
+
+独立公共坐标 HTTP 验证发现 v5 自行车实际返回 path.duration（秒），即使请求 show_fields=cost；实现同时兼容这一形状及文档中的 cost.duration，并分别回归。当前驾车、步行、骑行、公交与未来公交取得有效数值。摩托车和未来驾车被当前 Key 的提供商请求拒绝：仅记录固定类别，不保存原文或归因到具体权限/配额，真实成功未验证。模拟的成功响应只依据接口文档构造，不能代替额外权限端点验收。
+
+地址解析复用既有 geocode 的候选与 GCJ-02 字段，多候选不选第一项；先回传状态/候选供消歧，零结果明确 no_match。一次路线最多两个地址解析与一个路线请求，整个工具限时 20 秒；每次新 HTTP 及返回前重查原始身份、策略和配置快照。元数据不会取得会话、运行校验器或检测 Key/接口权限。通用网关、四服务、v0.6.1 payload、计算器及上游源快照未变；独立静态示例新增一份并继续使用原版 ScriptFunction 验证。

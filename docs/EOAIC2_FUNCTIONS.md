@@ -1,27 +1,27 @@
-# EOAIC2 独立 Functions（v0.7.2）
+# EOAIC2 独立 Functions（v0.8.0）
 
-推荐让模型直接看到每个工具，而不是通过 call_allowed_tool 再拼接工具身份。本文覆盖当前 **12 个 API/工具组合**：10 个 Tools for Assist 工具与高德 find_places、geocode；提供 12 份主示例及 2 份搜索参数变体，都是静态、完整、可直接复制的 YAML，不需要生成器。
+推荐让模型直接看到每个工具，而不是通过 call_allowed_tool 再拼接工具身份。本文覆盖当前 **13 个 API/工具组合**：10 个 Tools for Assist 工具与高德 find_places、geocode、get_route；提供 13 份主示例及 2 份搜索参数变体，都是静态、完整、可直接复制的 YAML，不需要生成器。
 
-每个 Function 都使用 `type: script`，脚本内固定 `api_id/tool_name` 并调用 `eoai_tools_bridge.call_tool`，模型只提供该工具自身的参数。没有恢复旧独立搜索服务，没有修改 Bridge 运行逻辑或任何上游，也不要求 EOAIC2 修改版/分支。原版固定快照只用于现有开发契约验证，不打包、不成为生产依赖。
+每个 Function 都使用 `type: script`，脚本内固定 `api_id/tool_name` 并调用 `eoai_tools_bridge.call_tool`，模型只提供该工具自身的参数。没有恢复旧独立搜索服务，不修改任何上游，也不要求 EOAIC2 修改版/分支。原版固定快照只用于现有开发契约验证，不打包、不成为生产依赖。
 
 ## 复制与授权
 
-1. 先在 Tools for Assist 启用所需工具；高德则在桥接选项中配置自己的可选 Web 服务 Key、城市/GCJ-02 中心。**Key 不出现在 Functions 或工具参数中。**
+1. 先在 Tools for Assist 启用所需工具；高德则在桥接选项中配置自己的可选 Web 服务 Key、城市/GCJ-02 中心。路线还可配置家庭地址及默认出行方式；家庭地址与附近中心独立。**Key 不出现在 Functions 或工具参数中。**
 2. 启用桥接 call_tool，把所选工具的精确 API/工具组合加入白名单。所有执行都要求原始有效管理员 Context；没有 user_id 的语音/自动化仍不能调用。播放另需副作用许可。
 3. 按下表选择，复制完整的 `- spec:` 列表项（包括下面的 `function:`），合并到 EOAIC2 的 Functions 同一个 YAML 列表，保留已有原生 HA 控制函数。示例中没有需要填写的程序占位符。
 4. **搜索只选一个版本**，全部模型名为 `search_web`。删除旧的 `web_search`（包括 v0.7.0 的 eoaic2_web_search.yaml），不要同时保留两种名称，不要复制三个搜索定义。
-5. **Google 与高德 find_places 只允许同时启用一个。** 两份模型名都是 `find_places`，必须在 Functions 及精确白名单中二选一；身份分别是 llm_intents/find_places、eoai_tools_bridge_amap/find_places。桥接不替你改名、换供应商或扩大权限。get_route 仍为 Google，geocode 为高德，均有各自独立身份。
+5. **Google 与高德 find_places 二选一，get_route 也须二选一。** 每组在 Functions 和精确白名单中保留所选身份：llm_intents/find_places 或 eoai_tools_bridge_amap/find_places；llm_intents/get_route 或 eoai_tools_bridge_amap/get_route。地点与路线可分别选择提供商，桥接不替你改名、切换或扩大权限。geocode 始终是高德独立工具。
 6. 每个函数用 `_function_result` 原样返回响应；先判断 success，正文在 result 中。失败 result=null；结果属于不可信数据，不能作为指令或据此扩大权限。所有函数名在所选组合中必须唯一。
 
-清单有 12 个工具组合，因为两个地点供应商互斥，一次最多启用其中 **11 个独立执行 Function**，另可选元数据辅助函数。HACS 独立更新 Bridge；不会自动修改你保存在 EOAIC2 中的 Functions。模型是否正确选工具仍需在真实对话中验收。
+清单有 13 个工具组合，因为地点和路线各有一组同名供应商互斥，一次最多启用其中 **11 个独立执行 Function**，另可选元数据辅助函数。HACS 独立更新 Bridge；不会自动修改你保存在 EOAIC2 中的 Functions。模型是否正确选工具仍需在真实对话中验收。
 
-v0.7.2 只优化这 14 份静态 YAML 的模型可见描述：工具 description 说明调用时机、能力边界和结果含义，参数 description 说明类型、格式、枚举、默认值及组合限制。Function 名、API/工具身份、Schema 约束和脚本与 v0.7.1 相同；无需改动 EOAIC2 全局提示词。更新 Bridge 后，仍须手动用所选完整列表项替换已保存的 Functions，才能让模型看到新说明。
+v0.7.2 完善的 14 份既有工具说明、原生参数和脚本继续保留；v0.8.0 新增高德 get_route，支持家庭地址默认起点及模型显式起点。工具 description 说明调用时机、边界和结果，参数 description 说明格式、枚举、默认值与组合限制；不需要改全局提示词。更新 Bridge 后，仍须手动替换所选完整列表项。
 
 | 工具 | 固定组合 | 必填 | 可选/默认 |
 | --- | --- | --- | --- |
 | search_web | llm_intents/search_web | query | 按提供商选择，见下文 |
 | Google find_places | llm_intents/find_places | query | 无模型可选参数；上游配置位置、数量等 |
-| get_route | llm_intents/get_route | destination | departure_time；mode 用上游配置默认，未配置 DRIVE |
+| Google get_route | llm_intents/get_route | destination | departure_time；mode 用上游配置默认，未配置 DRIVE |
 | search_wikipedia | llm_intents/search_wikipedia | query | 无 |
 | search_youtube | llm_intents/search_youtube | query | num_results 整数 1–25，默认 1 |
 | get_weather_forecast | weather_forecast/get_weather_forecast | range | 无；枚举如下 |
@@ -31,10 +31,11 @@ v0.7.2 只优化这 14 份静态 YAML 的模型可见描述：工具 description
 | play_video | media_services/play_video | video_url | entity_id 数组、area、device_id；仅单适用播放器可省略目标 |
 | 高德 find_places | eoai_tools_bridge_amap/find_places | query | city/location/radius/sort/types/limit；详情如下 |
 | geocode | eoai_tools_bridge_amap/geocode | address | city；省略继承桥接城市 |
+| 高德 get_route | eoai_tools_bridge_amap/get_route | destination | origin 省略用桥接家庭地址；mode 继承配置；departure_time、origin_city、destination_city |
 
 ## 调用与结果解读
 
-以下说明以 Tools for Assist 1.11.0 固定源码与本项目现有实现为准，不增加模型参数或后端能力。正文路径均相对于完整 call_tool 响应。
+以下说明以 Tools for Assist 1.11.0 固定源码与本项目现有实现为准。正文路径均相对于完整 call_tool 响应；两家 get_route 的能力与正文结构不同。
 
 | 工具 | 调用与参数要点 | 结果及边界 |
 | --- | --- | --- |
@@ -42,7 +43,8 @@ v0.7.2 只优化这 14 份静态 YAML 的模型可见描述：工具 description
 | Google find_places | Google Places 文本匹配；没有默认城市或 city 参数，已知城市写入 query。坐标/半径为上游位置偏好，数量由上游配置（默认 2）决定 | 核对名称/地址后再确认地点；位置偏好不是严格城市过滤或实时定位。电话/评分可能是 Not available/Not rated 占位；营业字段仅实际有值时出现；无分页参数 |
 | 高德 find_places | 显式/配置中心决定关键词或附近查询；city 继承桥接配置，无配置则不限制城市。附近中心必须为可信 GCJ-02，经度在前；radius/sort 需要中心，distance 还需要 types | 默认第一页最多 5 项、可设 1–20。results_limited 只描述当前响应的数量裁剪；不是全库总数或更多页保证。距离为服务端米数字符串；营业时间文本不等于 open_now，评分不套用 Google 口径 |
 | geocode | 用完整地址及已知城市消歧；city 是查询提示，不承诺 POI 的严格过滤语义 | result.results 最多 5 个 GCJ-02 候选，location 含 longitude/latitude，转为附近 location 字符串时按经度,纬度。ambiguous=true 表示提供商返回多个候选，裁剪后仍须消歧；false 不等于精确匹配，空列表表示无匹配 |
-| get_route | Google 路线固定从 Tools for Assist 配置起点出发；上游会解析目的地，无需总是先查地点。mode 省略继承配置，未配置 DRIVE；时间省略/无效按现在，过去时间改为现在后 10 秒 | result.result 为路线对象或无路线消息；检查返回的目的地是否正确。距离带单位，duration/estimated_arrival 是估算值，不能保证准点。departure_time 是出发时间，不是期望到达时间；不能更改起点或查询高德路线 |
+| Google get_route | Google 路线固定从 Tools for Assist 配置起点出发；上游会解析目的地，无需总是先查地点。mode 省略继承配置，未配置 DRIVE；时间省略/无效按现在，过去时间改为现在后 10 秒 | result.result 为路线对象或无路线消息；检查返回的目的地是否正确。距离带单位，duration/estimated_arrival 是估算值，不能保证准点。departure_time 是出发时间，不是期望到达时间；不能更改起点或查询高德路线 |
+| 高德 get_route | 默认用 Bridge 家庭地址，显式 origin 覆盖；地址或可信 GCJ-02 均可。模式继承 Bridge 配置。仅 DRIVE/TRANSIT 可指定未来 7 天内带时区的出发时间，其他组合明确拒绝 | 先看 result.status，ok 才读 result.route；多候选先消歧，无路线/无地址/缺公交城市均不虚构距离。米/秒数值与估算时间；未来驾车和摩托车须额外接口权限。详见 [路线说明](AMAP_ROUTES.md) |
 | search_wikipedia | 固定英文维基百科；中文问题优先转为英文主题词，回答仍用用户语言 | result.results 为标题和摘要，无全文/URL，条数由上游配置（默认 1）；无文章消息只说明本次词未匹配，不证明主题不存在 |
 | search_youtube | 根据用户要一个视频还是多个选项决定 num_results（1–25，省略 1） | result.results 返回视频资料与链接，不返回完整内容或保证可播放；不足时可增数量/改查询补充，已有足够相关结果则不重复；仅搜索不播放 |
 | get_weather_forecast | 只查询上游已配天气实体对应位置；tonight 用 today，星期枚举含当天，week 请求可用的日预报覆盖 | result 直接是预报文本；日/小时粒度和可用天数由实体决定，不保证满七天，不支持任意城市/历史天气，不推断缺失单位或气象值 |
@@ -278,13 +280,14 @@ topic 与 time_range 可各自省略，不需要成对填写；freshness 不属�
 
 ### Google 路线 get_route
 
-仅 destination 必填，保持用户原始描述。departure_time 是字符串，推荐带时区的未来 ISO 8601；省略表示现在。原版对解析失败回退现在，对过去时间调整至现在之后约 10 秒；无时区按 HA 默认时区，不宣称历史路线。mode 的枚举为 DRIVE/WALK/BICYCLE/TRANSIT/TWO_WHEELER，省略由原生配置决定，模板不能硬填 DRIVE。v0.7.x 没有高德路线工具。
+仅 destination 必填，保持用户原始描述。departure_time 是字符串，推荐带时区的未来 ISO 8601；省略表示现在。原版对解析失败回退现在，对过去时间调整至现在之后约 10 秒；无时区按 HA 默认时区，不宣称历史路线。mode 的枚举为 DRIVE/WALK/BICYCLE/TRANSIT/TWO_WHEELER，省略由原生配置决定，模板不能硬填 DRIVE。此 Google 工具不能传 origin；如选择下方高德版本，必须替换同名 Function 和精确白名单。
 
 文件：[eoaic2_get_route.yaml](../examples/eoaic2_get_route.yaml)。
 
 <!-- example: eoaic2_get_route.yaml -->
 ```yaml
-# Google Routes passthrough; v0.7.x has no Amap route tool.
+# Choose ONE get_route Function: Google OR Amap. Never append both.
+# Google Routes passthrough keeps its fixed upstream origin and native behavior.
 # Configure origin/default mode in Tools for Assist, not in model arguments.
 # Requires call_tool enabled, llm_intents/get_route allowed, and the original admin.
 - spec:
@@ -872,11 +875,123 @@ address 1–500 字符必填，city 1–80 字符可选，省略继承配置城�
         response_variable: _function_result
 ```
 
+### 高德路线 get_route
+
+与上方 Google 版本同名，只能启用其中一份。新身份为 eoai_tools_bridge_amap/get_route；origin 省略使用 Bridge 自己配置的家庭地址，显式起点覆盖它，不使用附近搜索中心或 HA 实时位置。默认 mode 也来自 Bridge 配置。地址多候选先消歧；缺少公交城市、无匹配或无路线时按 status 处理。
+
+仅 DRIVE/TRANSIT 接受带时区的未来出发时间（桥接限定 7 天），不支持的模式/时间组合拒绝，不改为现在。未来驾车和摩托车服务需额外授权，失败不降级。两种提供商的默认时间处理及返回结构不同，详见 [高德路线完整说明](AMAP_ROUTES.md)。
+
+文件：[eoaic2_get_route_amap.yaml](../examples/eoaic2_get_route_amap.yaml)。
+
+<!-- example: eoaic2_get_route_amap.yaml -->
+```yaml
+# Choose ONE get_route Function: Google OR Amap. Never append both.
+# Configure Amap home/default mode in bridge options; an explicit origin overrides home.
+# Requires call_tool enabled, eoai_tools_bridge_amap/get_route allowed, original admin.
+- spec:
+    name: get_route
+    description: >-
+      Estimate an Amap route from a specified origin or the configured Amap home
+      when origin is omitted. Use known addresses or verified GCJ-02 points;
+      never guess user/device location or convert coordinates implicitly. Read
+      result.status before result.route: needs_clarification returns address
+      candidates for the named endpoint; no_match, city_required and no_route
+      contain no usable route. Resolve the gap instead of choosing the first
+      candidate. An ok route provides numeric meters/seconds plus formatted
+      distance/duration, not turn-by-turn navigation or guaranteed arrival.
+      Future driving and motorcycle routing require extra provider authorization;
+      failures do not fall back to another time, mode or Google. result.departure_time
+      is the effective UTC time used when explicitly requested.
+    parameters:
+      type: object
+      properties:
+        destination:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: >-
+            Required address/place string, 1-500 characters after trimming, or
+            verified GCJ-02 'longitude,latitude' with no internal spaces and at
+            most 6 decimals (longitude -180..180, latitude -90..90). Include known
+            city details. No default; not a relative location such as here/home.
+        origin:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: >-
+            Optional address/place or verified GCJ-02 'longitude,latitude' string,
+            same format and limits as destination. Overrides configured Amap home.
+            Omit to use home; if no home is configured, provide this field. Do not
+            send an empty/null value, here/home, or guessed live coordinates.
+        mode:
+          type: string
+          enum: [DRIVE, WALK, BICYCLE, TRANSIT, TWO_WHEELER]
+          description: >-
+            Optional exact string DRIVE, WALK, BICYCLE, TRANSIT or TWO_WHEELER
+            (motorcycle, not electric bicycle). Omitted uses the configured Amap
+            route mode, or DRIVE if unset. Motorcycle service needs separate
+            provider authorization; modes are never silently substituted.
+        departure_time:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: >-
+            Optional future ISO 8601 string with explicit timezone, e.g.
+            '2026-10-21T09:00:00+08:00', within 7 days. Only DRIVE/TRANSIT support
+            this field; omit for immediate departure. Invalid, naive or past
+            values fail. Driving uses whole seconds; transit uses whole minutes
+            in Asia/Shanghai. This is departure, not an arrival deadline.
+        origin_city:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: >-
+            Optional origin city name or citycode string, 1-80 trimmed characters.
+            Omitted uses the bridge city as an address-resolution hint. TRANSIT
+            requires a city from resolution or this/configured value, especially
+            for coordinates; use a city name or 3-4 digit citycode, not adcode.
+        destination_city:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: >-
+            Optional destination city name or citycode string, 1-80 trimmed
+            characters. Same default/format as origin_city; specify separately
+            for cross-city TRANSIT, not a guessed copy of the origin city.
+      required: [destination]
+      additionalProperties: false
+  function:
+    type: script
+    sequence:
+      - action: eoai_tools_bridge.call_tool
+        data: >-
+          {% set args = {'destination': destination} %}
+          {% if origin is defined %}
+            {% set args = dict(args, origin=origin) %}
+          {% endif %}
+          {% if mode is defined %}
+            {% set args = dict(args, mode=mode) %}
+          {% endif %}
+          {% if departure_time is defined %}
+            {% set args = dict(args, departure_time=departure_time) %}
+          {% endif %}
+          {% if origin_city is defined %}
+            {% set args = dict(args, origin_city=origin_city) %}
+          {% endif %}
+          {% if destination_city is defined %}
+            {% set args = dict(args, destination_city=destination_city) %}
+          {% endif %}
+          {{ {'api_id': 'eoai_tools_bridge_amap', 'tool_name': 'get_route', 'tool_args': args} }}
+        response_variable: _function_result
+```
+
 ## 类型、默认值与原版脚本兼容
 
 所有片段均使用**整体 data 模板返回字典**，不是对 query/amount/entity_id 等字段分别做字符串模板。这样 "123"、"true"、"{}"、"None" 等字符串保留原类型，data/entity_id 数组不会变成列表文本，day/month/year/num_results/radius/limit 仍是整数。参数中的 `{{ ... }}` 文字不二次渲染。
 
 模板只在可选变量已提供时把它加入 tool_args，保持缺省和显式值的区别；不使用 int/float/default 强制转换，不以 null/空字符串代表省略。显式 null 仍会透传并被非空原生类型拒绝，不被静默替换成默认值。YouTube num_results=1 与高德 limit=5 由原生 Schema 应用；地图附近 radius/sort 和路线 mode、城市/中心、年份等由原实现/配置决定。JSON Schema 的 default 只是对模型的描述，不在脚本中自动插入字段。
+
+高德路线 origin/mode 未给时不插入字段，由路线实现读取当前家庭地址/默认出行方式，显式 origin 则原样传递；空值不充当缺省，也不强行复用 Google 配置或附近中心。
 
 HA 模板环境本身有一个可调用的 `device_id()` 辅助函数，省略播放 device_id 时普通 `is defined` 会误把它当作参数，导致整个 data 不再是可解析字典。播放片段额外排除该可调用对象；真正传入的字符串设备 ID 仍透传，显式 null 仍拒绝。兼容测试覆盖省略与提供所有可选参数的两条路径。
 
@@ -884,12 +999,12 @@ HA 模板环境本身有一个可调用的 `device_id()` 辅助函数，省略�
 
 ## 可选高级与辅助函数
 
-[call_allowed_tool](../examples/eoaic2_call_tool.yaml) 仅作为需要动态选择可信 API/工具身份时的高级方案；推荐的 12 个独立示例不需要它。可选的 [list_search_tools](../examples/eoaic2_list_tools.yaml)、[check_enabled_tools](../examples/eoaic2_check_tools.yaml)、[describe_allowed_tool](../examples/eoaic2_describe_tool.yaml) 用于元数据/状态；它们不是另外三个执行工具，也不授予权限。需要动态媒体枚举时 describe_allowed_tool 可辅助查询，或由管理员通过 HA 开发者动作查看。
+[call_allowed_tool](../examples/eoaic2_call_tool.yaml) 仅作为需要动态选择可信 API/工具身份时的高级方案；推荐的 13 个独立工具组合不需要它。可选的 [list_search_tools](../examples/eoaic2_list_tools.yaml)、[check_enabled_tools](../examples/eoaic2_check_tools.yaml)、[describe_allowed_tool](../examples/eoaic2_describe_tool.yaml) 用于元数据/状态；它们不是另外三个执行工具，也不授予权限。需要动态媒体枚举时 describe_allowed_tool 可辅助查询，或由管理员通过 HA 开发者动作查看。
 
 ## 验证与边界
 
-示例验证使用当前 HA Core 2026.10.2、SHA-256 固定的 Tools for Assist 1.11.0 原版 Schema，以及原项目已采用的、未修改的 EOAIC2 ScriptFunction 快照；不替换用户安装、不依赖任何修改分支，不新增生产依赖。测试覆盖 12 个工具身份、搜索四后端的共同 query 与两组筛选参数、必填/可选/枚举/类型、默认值、省略/显式参数、Jinja 字符串/整数/数组、互斥组合与原始管理员。提供商执行被模拟，相关既有原版后端契约仍回归。
+示例验证使用当前 HA Core 2026.10.2、SHA-256 固定的 Tools for Assist 1.11.0 原版 Schema，以及原项目已采用的、未修改的 EOAIC2 ScriptFunction 快照；不替换用户安装、不依赖任何修改分支，不新增生产依赖。测试覆盖 13 个工具身份、搜索四后端的共同 query 与两组筛选参数、必填/可选/枚举/类型、默认值、省略/显式参数、Jinja 字符串/整数/数组、互斥组合与原始管理员。提供商执行被模拟，相关既有原版后端契约仍回归。地点二选一 × 路线二选一 × 搜索三选一的 12 种组合均检查函数名唯一。
 
-v0.7.2 还将 14 份示例移除 description 后的完整结构与 v0.7.1 固定摘要比较，防止误改 Schema/default/身份或 Jinja 脚本；检查各工具和参数的描述齐全且有长度上限，单位标识组与原版转换器逐项相同。本文全部 14 个代码块与静态 YAML 逐字一致，README 搜索示例也持续检查。自动化不能证明模型决策质量提升，真实对话仍须单独验收。
+原有 14 份示例移除 description 后的完整结构仍与 v0.7.1 固定摘要比较，防止误改既有 Schema/default/身份或 Jinja 脚本；检查各工具和参数的描述齐全且有长度上限，单位标识组与原版转换器逐项相同。本文全部 15 个代码块与静态 YAML 逐字一致，README 搜索示例也持续检查。高德路线另在真实网关和原版 ScriptFunction 中验证家庭地址/显式起点两条路径，自动化不能代替真实对话验收。
 
 这些检查不代表真实模型选工具、用户 HA 安装或物理播放器已经验收。当前真实验证状态见 [TESTING.md](TESTING.md)，接口升级见 [迁移说明](MIGRATION_0_7.md)，上游来源与范围见 [兼容清单](TOOLS_COMPATIBILITY.md)。

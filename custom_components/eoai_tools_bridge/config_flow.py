@@ -14,10 +14,13 @@ from homeassistant.helpers import selector
 
 from .amap import (
     CONF_AMAP_CITY,
+    CONF_AMAP_HOME,
     CONF_AMAP_KEY,
     CONF_AMAP_LOCATION,
+    CONF_AMAP_MODE,
     normalize_amap_options,
 )
+from .amap_routes import ROUTE_MODES
 from .const import (
     CONF_ALLOW_SIDE_EFFECTS,
     CONF_ALLOWED_TOOLS,
@@ -91,6 +94,14 @@ class GatewayOptionsFlow(OptionsFlow):
                     vol.Optional(
                         CONF_AMAP_LOCATION, default=values.get(CONF_AMAP_LOCATION, "")
                     ): selector.TextSelector(),
+                    vol.Optional(
+                        CONF_AMAP_HOME, default=values.get(CONF_AMAP_HOME, "")
+                    ): selector.TextSelector(),
+                    vol.Optional(
+                        CONF_AMAP_MODE, default=values.get(CONF_AMAP_MODE, "DRIVE")
+                    ): selector.SelectSelector(
+                        selector.SelectSelectorConfig(options=list(ROUTE_MODES))
+                    ),
                     vol.Optional(
                         CONF_ALLOWED_TOOLS, default=values.get(CONF_ALLOWED_TOOLS, "")
                     ): selector.TextSelector(
