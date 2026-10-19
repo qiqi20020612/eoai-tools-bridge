@@ -1,5 +1,14 @@
 # 版本记录
 
+## 0.7.1 — 2026-10-19
+
+- 补齐当前 12 个 API/工具组合的独立 EOAIC2 Functions：原 10 个 Tools for Assist 工具与高德 find_places、geocode。提供 12 份主静态 YAML 及 2 份搜索筛选参数变体，全部 type: script，脚本固定身份并调用 eoai_tools_bridge.call_tool，模型只填写各工具原生参数。
+- 推荐独立 Functions，call_allowed_tool 改为可选高级方案。统一推荐模型名 search_web，删除旧 eoaic2_web_search.yaml，并要求手动替换旧 web_search，避免重复；未恢复已删除的独立搜索服务。
+- 按提供商区分 query-only、Brave LLM Context freshness、Tavily topic/time_range，三份 search_web 只选一份。Google 与高德 find_places 同名且在 Functions/精确白名单中二选一，保留原 API 身份，不自动切换。
+- 原生必填/可选、枚举、默认值及桥接限制逐项映射；整体 data 模板保留字符串、整数、数组和参数省略，播放 device_id 排除 HA 同名内置函数，动态实体枚举仍由当前原生选择器校验。原始管理员、白名单、副作用许可和 HACS 独立更新不变。
+- 新增 [完整 Functions 指南](EOAIC2_FUNCTIONS.md)，包含全部可复制片段，更新 README、迁移说明和过时辅助示例；文档代码块与静态文件一致性受测试验证，不增加 YAML 生成器或上游修改分支依赖。
+- 新增 89 项示例验证；完整 **601 passed、0 skipped**。使用现有未修改的原版 EOAIC2 ScriptFunction、Tools for Assist 1.11.0 Schema 及真实 HA 服务/权限链，提供商执行模拟。Bridge Python 运行文件、依赖和上游源文件保持不变，仅更新 0.7.1 发布元数据；本次没有新增真实联网、安装或模型验收证据。
+
 ## 0.7.0 — 2026-10-19
 
 - **接口变更：删除独立 eoai_tools_bridge.search_web 服务。** 移除专用注册、search.py 执行/规范化链路、旧 Schema/常量、旧示例及专用测试；仅保留 list_tools、check_tools、describe_tool、call_tool。启动清理残留旧注册，旧服务调用不再有执行回退。

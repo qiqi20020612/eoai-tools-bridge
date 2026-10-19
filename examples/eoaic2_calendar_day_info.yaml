@@ -1,0 +1,39 @@
+# Requires call_tool enabled, basic_utilities/calendar_day_info allowed, original admin.
+- spec:
+    name: calendar_day_info
+    description: >-
+      Get the weekday and formatted date for a valid calendar date using Tools
+      for Assist. Omit year to let the upstream use the current local year;
+      never fill a fixed year as its default. Report failures instead of inventing
+      a date. Requires the original active administrator.
+    parameters:
+      type: object
+      properties:
+        day:
+          type: integer
+          minimum: 1
+          maximum: 31
+          description: Day of month; the combination must be a real date
+        month:
+          type: integer
+          minimum: 1
+          maximum: 12
+          description: Month number, January is 1 and December is 12
+        year:
+          type: integer
+          minimum: 1
+          maximum: 9999
+          description: Optional calendar year; omitted means the current local year
+      required: [day, month]
+      additionalProperties: false
+  function:
+    type: script
+    sequence:
+      - action: eoai_tools_bridge.call_tool
+        data: >-
+          {% set args = {'day': day, 'month': month} %}
+          {% if year is defined %}
+            {% set args = dict(args, year=year) %}
+          {% endif %}
+          {{ {'api_id': 'basic_utilities', 'tool_name': 'calendar_day_info', 'tool_args': args} }}
+        response_variable: _function_result

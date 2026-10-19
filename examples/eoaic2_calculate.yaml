@@ -1,0 +1,38 @@
+# Requires call_tool enabled, basic_utilities/calculate allowed, original admin.
+# Side-effect permission is not needed for this bounded numeric calculator.
+- spec:
+    name: calculate
+    description: >-
+      Calculate with Tools for Assist under the bridge numeric limits. Use only
+      finite numbers, pi/E, + - * / // % ** ^ and functions sqrt, sin, cos, tan,
+      exp, log, Abs, abs, floor, ceiling, Min, Max. No code, attributes, indexing,
+      strings inside expressions or other names. Expressions allow 64 AST nodes
+      and depth 8; numbers/intermediates have absolute value at most 1e100 and,
+      unless zero, at least 1e-100; exponent absolute value is at most 32. Report
+      rejection without bypassing constraints. Requires the original active administrator.
+    parameters:
+      type: object
+      properties:
+        operation:
+          type: string
+          enum: [expression, min, max, avg]
+          description: Numeric operation; no default
+        data:
+          type: array
+          minItems: 1
+          maxItems: 32
+          items:
+            type: string
+            maxLength: 256
+          description: >-
+            For expression, exactly one expression string, at most 256 characters.
+            For min/max/avg, 1-32 numeric strings, each at most 64 characters.
+            Array elements must be strings, never JSON numbers.
+      required: [operation, data]
+      additionalProperties: false
+  function:
+    type: script
+    sequence:
+      - action: eoai_tools_bridge.call_tool
+        data: "{{ {'api_id': 'basic_utilities', 'tool_name': 'calculate', 'tool_args': {'operation': operation, 'data': data}} }}"
+        response_variable: _function_result

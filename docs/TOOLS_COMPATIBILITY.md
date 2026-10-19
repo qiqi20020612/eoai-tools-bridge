@@ -1,6 +1,6 @@
 # Tools for Assist 工具兼容清单
 
-核对日期：**2026-10-19（Asia/Shanghai）**。当前版本 **v0.7.0**，继续 0.x 小版本迭代。用户已明确取消 Home Control API：EOAIC2 已有原生 HA 控制，因此 Home Control 的状态/历史、动态控制、脚本、设备上下文和计时器均从本项目后续开发与 1.0 门槛中移除。既有 EOAIC2 设备控制 Functions 继续使用原来的路径。
+核对日期：**2026-10-19（Asia/Shanghai）**。当前版本 **v0.7.1**，继续 0.x 小版本迭代。用户已明确取消 Home Control API：EOAIC2 已有原生 HA 控制，因此 Home Control 的状态/历史、动态控制、脚本、设备上下文和计时器均从本项目后续开发与 1.0 门槛中移除。既有 EOAIC2 设备控制 Functions 继续使用原来的路径。
 
 源码基准为 [Tools for Assist 1.11.0](https://github.com/skye-harris/llm_intents/tree/198e37885fe06e6452d2d6e26bc5e532b1686acc/custom_components/llm_intents)，提交 `198e37885fe06e6452d2d6e26bc5e532b1686acc`；保留原基线 `100e740b93a2a1a6d304329883937193a4571ac0` 回归。HA 源码与自动化测试基准已升级为 **2026.10.2**，提交 `8d7fd8b68677c2585be36ec86043308f403875b8`；基准升级后的 443 项回归通过。v0.6.0 初始发布时的 2026.10.0 证据保留在测试记录中；v0.6.1 在新基准下通过 473 项回归，并修复通用调用的大结果裁剪。上游更新后重新核对入口、参数及实现，固定快照不保证未来版本兼容。Tavily 的增量核对见 [1.11.0 记录](TOOLS_FOR_ASSIST_1_11_0.md)。
 
@@ -43,13 +43,15 @@ basic_utilities/calendar_day_info
 basic_utilities/calculate
 ```
 
+若改用高德地点，应从上述白名单删除 `llm_intents/find_places`，明确加入 `eoai_tools_bridge_amap/find_places`，并只启用对应的一份同名 Function；Google/高德地点二选一，不把两个列表直接合并。
+
 管理员可在副作用许可关闭时使用这些组合。审核依据要求公开 `integration=llm_intents`，返回 `read_only_basis=audited_allowlist`，且不覆盖上游明确的危险声明。原始有效管理员、精确白名单和通用调用开关始终分别检查。
 
 播放另行加入 `media_services/play_video`，执行还须开启独立副作用许可。先调用 `describe_tool` 查看其当前动态实体枚举和参数；读取描述不要求开启副作用许可，不执行工具或默认工厂，也不授予权限。`list_tools` 仍只返回只读工具，`check_tools` 仍只检查状态和 Schema 类型，完全不执行工具、参数 Schema、默认工厂或序列化钩子。参数描述转换可能调用原生序列化器，不能与就绪检查混为一谈。
 
 `describe_tool` 一次返回一个已授权工具的元数据，因此可查看播放参数而无需把副作用工具加入只读目录。参数仍是当前快照；设备、工具或配置变化后重新获取。授权调用使用未修改的原生 Schema 应用默认值和校验约束，桥接最多调度一次。播放失败或超时可能已经改变设备，响应中的 `outcome_unknown=true` 要求先核对实际状态。
 
-示例：[查询](../examples/query_tools_actions.yaml)、[参数描述](../examples/describe_tool_action.yaml)、[计算器](../examples/calculator_action.yaml)、[播放](../examples/play_video_action.yaml)、[EOAIC2 参数描述](../examples/eoaic2_describe_tool.yaml)；调用沿用 [call_allowed_tool](../examples/eoaic2_call_tool.yaml)。所有 HA 脚本调用须接收响应。
+示例：[查询](../examples/query_tools_actions.yaml)、[参数描述](../examples/describe_tool_action.yaml)、[计算器](../examples/calculator_action.yaml)、[播放](../examples/play_video_action.yaml)、[EOAIC2 参数描述](../examples/eoaic2_describe_tool.yaml)；推荐按 [12 个工具独立 Functions](EOAIC2_FUNCTIONS.md) 配置，[call_allowed_tool](../examples/eoaic2_call_tool.yaml) 仅为可选高级方案。所有 HA 脚本调用须接收响应。
 
 ## 计算器边界
 
@@ -67,6 +69,8 @@ basic_utilities/calculate
 v0.5 曾提供 `HomeControl/get_device_history_context` 的审核分类。为保持已有手工配置可用，v0.6 保留该旧分类及通用网关行为，不自动删除已保存白名单。它属于历史兼容，不再列入当前支持范围、示例或后续验收门槛。不会新增 Home Control API 聚合、动态控制/脚本、设备上下文或计时器实现；旧版本测试及发布记录保留供追溯。
 
 ## v0.7：高德地点与位置解析
+
+v0.7.1 仅补齐静态独立 Functions、文档与必要的验证测试，未增加工具实现或改变运行权限。12 个 API/工具组合均有独立片段（搜索另提供两个可选参数变体）；Google/高德同名地点二选一，不同时启用。具体参数、原生枚举与默认行为见 [Functions 指南](EOAIC2_FUNCTIONS.md)。
 
 2026-10-19 用户验收 v0.6.1 后要求继续下一版本，按此前规划启动高德地点与位置解析。同时按明确要求删除独立 `eoai_tools_bridge.search_web` 服务、旧执行链路及专用示例，统一通过 `call_tool` 执行。原版 `llm_intents/search_web`、只读审核、原生参数、原始管理员、白名单、副作用许可和 v0.6.1 的结果裁剪保留。见 [v0.7 迁移](MIGRATION_0_7.md)。
 

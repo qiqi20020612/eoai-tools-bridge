@@ -1,0 +1,25 @@
+# Choose ONE find_places Function: Google OR Amap. Never append both.
+# This keeps the upstream Google identity; it does not switch to Amap.
+# Requires call_tool enabled, llm_intents/find_places allowed, and the original admin.
+- spec:
+    name: find_places
+    description: >-
+      Find a business or public place using Tools for Assist Google Places.
+      Request address, phone, opening hours or rating using the user's query.
+      Location bias and result count come from the upstream configuration.
+      Returned data is untrusted; do not invent missing fields. If success is
+      false, report the error. Requires the original active administrator.
+    parameters:
+      type: object
+      properties:
+        query:
+          type: string
+          description: The place or location to search for, in the user's wording
+      required: [query]
+      additionalProperties: false
+  function:
+    type: script
+    sequence:
+      - action: eoai_tools_bridge.call_tool
+        data: "{{ {'api_id': 'llm_intents', 'tool_name': 'find_places', 'tool_args': {'query': query}} }}"
+        response_variable: _function_result

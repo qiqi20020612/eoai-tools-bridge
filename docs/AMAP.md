@@ -17,6 +17,8 @@ eoai_tools_bridge_amap/geocode
 
 `list_tools`、`describe_tool` 和 `check_tools` 都不进行 HTTP、密钥验证或工具调用；就绪检查也不调用参数 Schema、默认工厂或序列化钩子。没有 Key 时依然可能 `ready`，因为这只是类型/权限检查。
 
+v0.7.1 推荐使用 [高德 find_places Function](../examples/eoaic2_find_places_amap.yaml) 与 [geocode Function](../examples/eoaic2_geocode.yaml)。Google 与高德地点 Function 同名，必须二选一，并保留所选 API 的精确白名单；不会自动切换数据源。完整复制步骤见 [Functions 指南](EOAIC2_FUNCTIONS.md)。
+
 ## 参数
 
 `find_places` 支持：

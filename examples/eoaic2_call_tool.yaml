@@ -1,4 +1,5 @@
-# Optional: append to existing Functions after configuring the bridge allowlist.
+# Optional advanced gateway. Prefer the independent Functions in docs/EOAIC2_FUNCTIONS.md.
+# Not required to use any of the 12 documented tools. Configure the allowlist first.
 - spec:
     name: call_allowed_tool
     description: >-
@@ -10,7 +11,7 @@
       Calls require the original active administrator context. If success is
       false, report the error. If outcome_unknown is true, state that a change
       may already have occurred and do not retry automatically. Use this gateway
-      for web search as well. Use EOAIC2 native Home Assistant
+      only when a direct independent Function is unsuitable. Use EOAIC2 native Home Assistant
       functions for home control.
     parameters:
       type: object

@@ -124,3 +124,11 @@ data: "{{ {'query': query} }}"
 官方接口复核于 2026-10-19：[POI 2.0](https://lbs.amap.com/api/webservice/guide/api-advanced/newpoisearch)（页面更新 2026-07-15）使用 /v5/place/text 和 /v5/place/around；[地理编码](https://lbs.amap.com/api/webservice/guide/api/georegeo)（页面更新 2026-02-02）使用 /v3/geocode/geo。文档的关键词 80 字符、页大小、城市限制、周边半径/排序、business 字段和缺失字符串数组语义已分别映射到本项目约束。未宣称 Google 与高德字段或位置参考系等价；[具体映射与边界](AMAP.md) 独立维护。
 
 Key 为可选可信配置，不在模型参数中出现；仅固定 HTTPS 端点，无重定向/缓存/重试，单请求 10 秒、原始响应 256 KiB。三端点真实 HTTP 验证与模拟契约分别记入 TESTING；该验证不属于真实 HA/EOAIC2 或物理设备验收。
+
+## v0.7.1：静态独立 Functions 的原生参数核对
+
+以当前已固定的 1.11.0 原版工具公开 Schema 和现有 EOAIC2 ScriptFunction 测试快照核对 12 个工具组合，不修改、引入修改分支或新增上游生产依赖。Bridge Python 文件保持 v0.7.0 原字节，只有发布版本元数据更新。文档提供静态 YAML，不增加生成器。
+
+网页搜索四实现共用同一工具名：Brave Web/SearXNG 只接受 query；Brave LLM Context 另有 freshness 的四项原生枚举；Tavily 另有 topic/time_range。独立 search_web 通过不同互斥示例保留差异，query-only 可用于四家，不用 Schema 并集。路线 mode 省略保留原版配置默认，year 省略保留原版当前本地年份；YouTube num_results=1、高德 limit=5 的 Schema 默认由原工具应用。
+
+原版媒体的 entity_id 选择器为当前设备列表构成的字符串数组枚举，不能在可复制的通用模板中伪造固定值；示例准确保留数组、area 和 device_id，动态取值仍由原生选择器验证。原版 HA 模板环境有同名 device_id() 函数，示例在该可选字段不存在时排除可调用内置对象，避免参数渲染成非字典。完整参数与已知语义见 [Functions 指南](EOAIC2_FUNCTIONS.md)。

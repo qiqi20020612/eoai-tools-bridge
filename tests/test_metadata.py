@@ -56,7 +56,7 @@ async def test_runtime_action_description(hass, bridge_entry):
 def test_documented_yaml_matches_delivered_example():
     blocks = re.findall(r"```yaml\n(.*?)\n```", (ROOT / "README.md").read_text(), re.S)
     documented = next(yaml.safe_load(block) for block in blocks if "- spec:" in block)
-    delivered = yaml.safe_load((ROOT / "examples/eoaic2_web_search.yaml").read_text())
+    delivered = yaml.safe_load((ROOT / "examples/eoaic2_search_web.yaml").read_text())
     assert documented == delivered
 
 

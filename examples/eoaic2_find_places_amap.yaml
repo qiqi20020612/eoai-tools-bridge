@@ -1,0 +1,79 @@
+# Choose ONE find_places Function: Google OR Amap. Never append both.
+# Key/default city/nearby center belong in bridge options, not in this YAML.
+# Requires call_tool enabled, eoai_tools_bridge_amap/find_places allowed, original admin.
+- spec:
+    name: find_places
+    description: >-
+      Find places using Amap. Use keywords alone, or explicit/configured GCJ-02
+      coordinates for nearby search. City restricts the search. Radius/sort require
+      a location; distance sorting also requires types. Do not guess coordinates
+      or convert them implicitly. Read result.results and actual returned fields;
+      do not invent phone, hours or rating. Requires the original active administrator.
+    parameters:
+      type: object
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: Place keyword, 1-80 valid Unicode characters after trimming
+        city:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: Optional city restriction; omission preserves the configured city
+        location:
+          type: string
+          description: >-
+            Optional GCJ-02 longitude,latitude; at most 6 decimal places,
+            longitude -180 to 180 and latitude -90 to 90. Omission preserves the
+            configured center; with no center, use keyword search. Never infer home/device location.
+        radius:
+          type: integer
+          minimum: 1
+          maximum: 50000
+          default: 5000
+          description: Optional nearby radius in meters; requires a location
+        sort:
+          type: string
+          enum: [weight, distance]
+          default: weight
+          description: Optional nearby sort; distance also requires types
+        types:
+          type: string
+          pattern: '^[0-9]{6}(?:\|[0-9]{6}){0,9}$'
+          description: Optional 1-10 six-digit Amap POI codes joined by |; e.g. 050000
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 5
+          description: Optional first-page result limit; omitted means 5, never all places
+      required: [query]
+      additionalProperties: false
+  function:
+    type: script
+    sequence:
+      - action: eoai_tools_bridge.call_tool
+        data: >-
+          {% set args = {'query': query} %}
+          {% if city is defined %}
+            {% set args = dict(args, city=city) %}
+          {% endif %}
+          {% if location is defined %}
+            {% set args = dict(args, location=location) %}
+          {% endif %}
+          {% if radius is defined %}
+            {% set args = dict(args, radius=radius) %}
+          {% endif %}
+          {% if sort is defined %}
+            {% set args = dict(args, sort=sort) %}
+          {% endif %}
+          {% if types is defined %}
+            {% set args = dict(args, types=types) %}
+          {% endif %}
+          {% if limit is defined %}
+            {% set args = dict(args, limit=limit) %}
+          {% endif %}
+          {{ {'api_id': 'eoai_tools_bridge_amap', 'tool_name': 'find_places', 'tool_args': args} }}
+        response_variable: _function_result

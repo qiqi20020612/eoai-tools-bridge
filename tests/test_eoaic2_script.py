@@ -24,8 +24,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @pytest.fixture
 def function_config():
-    example = yaml.safe_load((ROOT / "examples/eoaic2_web_search.yaml").read_text())
-    assert example[0]["spec"]["name"] == "web_search"
+    example = yaml.safe_load((ROOT / "examples/eoaic2_search_web.yaml").read_text())
+    assert example[0]["spec"]["name"] == "search_web"
     return example[0]["function"]
 
 
