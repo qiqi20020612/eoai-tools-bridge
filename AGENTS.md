@@ -10,5 +10,6 @@
 - v0.6 adds administrator-only metadata for one explicitly allowed tool, bounded numeric calculator arguments before native dispatch, and original calculator/media contracts. Preserve list_tools as a read-only catalog and check_tools as a non-executing type/status check.
 - Home Control is out of scope by user decision: EOAIC2 already provides native HA control. Do not implement its dynamic controls/scripts, device context, or timers. Preserve existing manual gateway behavior and the v0.5 history classification only for compatibility; do not include Home Control in new support claims or v1.0 gates.
 - Before v1.0, cover Tools for Assist's non-Home-Control tools, including calculator and media playback. Maintain the source inventory and remaining 0.x acceptance gates in docs/TOOLS_COMPATIBILITY.md; do not call simulated coverage live acceptance.
+- The pre-v1.0 roadmap also includes bridge-owned Amap-backed counterparts of Tools for Assist's place/location and route tools, including their location resolution. Keep existing upstream Google tool passthrough compatible and use a distinct identity for the new provider. This planning-only request authorizes documentation changes, not implementation.
 - Do not modify EOAIC2, Tools for Assist, Home Assistant Core, or their installed files.
 - Report simulated tests and live integration acceptance separately.
