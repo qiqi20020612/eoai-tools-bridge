@@ -1,4 +1,4 @@
-"""Key-free setup and explicit options for controlled tool invocation."""
+"""Key-free setup, explicit permissions and optional Amap credentials."""
 
 from typing import Any
 
@@ -12,6 +12,12 @@ from homeassistant.config_entries import (
 from homeassistant.core import callback
 from homeassistant.helpers import selector
 
+from .amap import (
+    CONF_AMAP_CITY,
+    CONF_AMAP_KEY,
+    CONF_AMAP_LOCATION,
+    normalize_amap_options,
+)
 from .const import (
     CONF_ALLOW_SIDE_EFFECTS,
     CONF_ALLOWED_TOOLS,
@@ -23,7 +29,7 @@ from .policy import normalize_options
 
 
 class ToolsBridgeConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Configure the search bridge."""
+    """Configure the tool bridge."""
 
     VERSION = 1
 
@@ -59,7 +65,12 @@ class GatewayOptionsFlow(OptionsFlow):
             except vol.Invalid:
                 errors["base"] = "invalid_allowlist"
             else:
-                return self.async_create_entry(title="", data=options)
+                try:
+                    options.update(normalize_amap_options(user_input))
+                except vol.Invalid:
+                    errors["base"] = "invalid_amap_options"
+                else:
+                    return self.async_create_entry(title="", data=options)
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
@@ -67,6 +78,19 @@ class GatewayOptionsFlow(OptionsFlow):
                     vol.Optional(
                         CONF_ENABLED, default=values.get(CONF_ENABLED, False)
                     ): selector.BooleanSelector(),
+                    vol.Optional(
+                        CONF_AMAP_KEY, default=values.get(CONF_AMAP_KEY, "")
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_AMAP_CITY, default=values.get(CONF_AMAP_CITY, "")
+                    ): selector.TextSelector(),
+                    vol.Optional(
+                        CONF_AMAP_LOCATION, default=values.get(CONF_AMAP_LOCATION, "")
+                    ): selector.TextSelector(),
                     vol.Optional(
                         CONF_ALLOWED_TOOLS, default=values.get(CONF_ALLOWED_TOOLS, "")
                     ): selector.TextSelector(

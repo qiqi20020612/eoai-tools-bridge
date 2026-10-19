@@ -12,7 +12,7 @@ from .calculator import is_calculator, validate_calculator_args
 from .const import API_ID, DOMAIN, TOOL_NAME, TOOL_TIMEOUT_SECONDS
 from .payload import normalize_tool_result, tool_response, validate_tool_args
 from .policy import async_is_admin, get_policy, read_only_basis, validate_identifier
-from .search import validate_query
+from .validation import validate_query
 
 _LOGGER = logging.getLogger(__name__)
 CALL_TOOL_SCHEMA = vol.Schema(

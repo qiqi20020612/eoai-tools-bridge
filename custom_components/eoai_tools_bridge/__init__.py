@@ -1,6 +1,4 @@
-"""Expose search, controlled tools, and read-only checks through HA's LLM API."""
-
-import logging
+"""Expose controlled tools and read-only checks through HA's LLM API."""
 
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.core import (
@@ -10,8 +8,10 @@ from homeassistant.core import (
     SupportsResponse,
 )
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import llm
 from homeassistant.helpers.typing import ConfigType
 
+from .amap import AmapAPI
 from .catalog import LIST_TOOLS_SCHEMA, async_list_tools, catalog_response
 from .const import (
     DOMAIN,
@@ -19,30 +19,16 @@ from .const import (
     SERVICE_CHECK_TOOLS,
     SERVICE_DESCRIBE_TOOL,
     SERVICE_LIST_TOOLS,
-    SERVICE_SEARCH_WEB,
 )
 from .describe import DESCRIBE_TOOL_SCHEMA, async_describe_tool
 from .gateway import CALL_TOOL_SCHEMA, async_call_tool
 from .readiness import CHECK_TOOLS_SCHEMA, async_check_tools
-from .search import SEARCH_SCHEMA, async_search, failure_response
 
-_LOGGER = logging.getLogger(__name__)
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Register each action once, independently of entry reloads."""
-
-    async def handle_search(call: ServiceCall) -> ServiceResponse:
-        """Return a friendly failure when no bridge entry is loaded."""
-        query = call.data["query"]
-        if not any(
-            entry.state is ConfigEntryState.LOADED
-            for entry in hass.config_entries.async_entries(DOMAIN)
-        ):
-            _LOGGER.debug("Search action called without a loaded bridge entry")
-            return failure_response(query, "bridge_not_loaded")
-        return await async_search(hass, call)
 
     async def handle_list_tools(call: ServiceCall) -> ServiceResponse:
         """Expose metadata only while a bridge entry is loaded."""
@@ -65,14 +51,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         """Inspect a single explicitly configured tool as the original admin."""
         return await async_describe_tool(hass, call)
 
-    if not hass.services.has_service(DOMAIN, SERVICE_SEARCH_WEB):
-        hass.services.async_register(
-            DOMAIN,
-            SERVICE_SEARCH_WEB,
-            handle_search,
-            schema=SEARCH_SCHEMA,
-            supports_response=SupportsResponse.ONLY,
-        )
+    # Remove a stale registration if this process previously loaded v0.6.x.
+    if hass.services.has_service(DOMAIN, "search_web"):
+        hass.services.async_remove(DOMAIN, "search_web")
     if not hass.services.has_service(DOMAIN, SERVICE_LIST_TOOLS):
         hass.services.async_register(
             DOMAIN,
@@ -110,6 +91,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Load the bridge even if Tools for Assist is not available yet."""
+    entry.async_on_unload(llm.async_register_api(hass, AmapAPI(hass, entry)))
     return True
 
 

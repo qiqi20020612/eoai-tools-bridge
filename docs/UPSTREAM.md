@@ -53,7 +53,7 @@ v0.4 增量复核日期为 **2026-10-10**，当时采用原基准 HA 2026.10.0�
 
 [llm_functions.py](https://github.com/skye-harris/llm_intents/blob/100e740b93a2a1a6d304329883937193a4571ac0/custom_components/llm_intents/llm_functions.py) 中 `SearchAPI.id=llm_intents`。仅配置了相关工具的 API 才注册；即使搜索 API 注册，也可能只启用了维基百科等工具。桥接分别检查 API 注册与 `search_web` 可用性。
 
-[base_web_search.py](https://github.com/skye-harris/llm_intents/blob/100e740b93a2a1a6d304329883937193a4571ac0/custom_components/llm_intents/base_web_search.py) 的工具名为 `search_web`，必填参数 `query`。正常结果为 `{"results": ...}`，空结果为字符串 `"No results found"`，业务失败为 `{"error": ...}`，部分成功响应附有 `instruction`。桥接规范化空结果、隐藏错误原文并丢弃指令字段。
+[base_web_search.py](https://github.com/skye-harris/llm_intents/blob/100e740b93a2a1a6d304329883937193a4571ac0/custom_components/llm_intents/base_web_search.py) 的工具名为 `search_web`，必填参数 `query`。正常结果为 `{"results": ...}`，空结果为字符串 `"No results found"`，业务失败为 `{"error": ...}`，部分成功响应附有 `instruction`。旧专用搜索链路曾规范化空结果；v0.7 统一使用 call_tool，保留原生 results 字符串，继续隐藏错误原文并丢弃指令字段。
 
 实际结果格式：
 
@@ -96,12 +96,12 @@ data: "{{ {'query': query} }}"
 
 ## 2026-10-19：Tools for Assist 1.11.0
 
-核对固定发布提交 `198e37885fe06e6452d2d6e26bc5e532b1686acc`。与原基线相比，旧工具的 18 个实现/公共依赖文件未变；新增 Tavily 搜索类及其配置、常量和映射，原 API 标识、工具名及结果结构保留。桥接运行代码无需调整，新增的 topic/time_range 原生枚举可直接通过既有通用调用。固定搜索仍只接受 query，已有 EOAIC2 搜索 YAML 保持可用。
+核对固定发布提交 `198e37885fe06e6452d2d6e26bc5e532b1686acc`。与原基线相比，旧工具的 18 个实现/公共依赖文件未变；新增 Tavily 搜索类及其配置、常量和映射，原 API 标识、工具名及结果结构保留。桥接运行代码无需调整，新增的 topic/time_range 原生枚举可直接通过既有通用调用。该增量核对时固定搜索仍只接受 query；v0.7 已删除该独立服务，当前搜索 Functions 须按迁移说明改为 call_tool。
 
 本地 17 项新增原版 Tavily 契约与完整 362 项回归通过（0 skipped），HTTP 和缓存模拟；真实联网与用户环境另行验收。原有 20 文件快照保留，另存固定发布的 22 文件快照用于回归。详见 [TOOLS_FOR_ASSIST_1_11_0.md](TOOLS_FOR_ASSIST_1_11_0.md)。
 
 
-## v0.6：当前范围、参数描述与原版计算/播放
+## v0.6：参数描述与原版计算/播放历史依据
 
 用户已明确取消 Home Control API，EOAIC2 继续承担原生 HA 控制。Home Control 的动态工具/脚本、设备上下文和计时器从后续开发与 1.0 门槛移除；保留 v0.5 历史分类与手工配置行为供兼容，不据此新增 Home Control 支持声明。
 
@@ -114,3 +114,13 @@ data: "{{ {'query': query} }}"
 **上游 Context 限制：**桥接原样把管理员 Context 交给 API/工具；PlayVideoTool 发起下游播放服务时没有传入 context，因此服务端 user_id 为空。原版方法与模拟 HA 服务测试分别验证这两层行为；不能宣称用户身份完整穿透到设备服务。不修改第三方或 HA Core 来补写 Context；真实播放验收需检查该已知行为。
 
 新增 `describe_tool` 允许管理员先读取一个精确授权工具的公开 Schema，即使播放执行许可尚未开启。它沿用严格、受预算的元数据视图，不执行工具、原生参数校验器或默认工厂；转换可调用原生序列化器。`list_tools` 保持只读目录，`check_tools` 保持不执行 Schema/默认值/序列化钩子的类型与状态检查，两者原有契约不变。原版 EOAIC2 ScriptFunction 新增描述、计算与播放接线测试；真实模型、联网和设备验收另计。
+
+## v0.7：统一执行入口与独立高德 API
+
+删除专用 search.py 和服务注册；共享 validate_query 迁至 validation.py，gateway.py 仅更改该导入。list_tools/check_tools/describe_tool/call_tool 及其权限逻辑保留，payload.py 与 v0.6.1 修复提交保持逐字节一致。HA 对旧服务调用报告 ServiceNotFound；启动时也移除可能残留的旧注册，不提供执行回退或自动授权。
+
+高德 API `eoai_tools_bridge_amap` 使用 HA 公开 async_register_api，并在配置项卸载时注销。metadata 返回已创建的原生 Schema，获取 API 不创建 HTTP 会话；就绪检查不调用参数逻辑。原生 APIInstance 的调度本身不验证参数/桥接权限，因此新工具内部再次执行自身的受限原生参数和桥接策略检查，防止原生 API 成为旁路；不改变外部上游工具既有调用机制。
+
+官方接口复核于 2026-10-19：[POI 2.0](https://lbs.amap.com/api/webservice/guide/api-advanced/newpoisearch)（页面更新 2026-07-15）使用 /v5/place/text 和 /v5/place/around；[地理编码](https://lbs.amap.com/api/webservice/guide/api/georegeo)（页面更新 2026-02-02）使用 /v3/geocode/geo。文档的关键词 80 字符、页大小、城市限制、周边半径/排序、business 字段和缺失字符串数组语义已分别映射到本项目约束。未宣称 Google 与高德字段或位置参考系等价；[具体映射与边界](AMAP.md) 独立维护。
+
+Key 为可选可信配置，不在模型参数中出现；仅固定 HTTPS 端点，无重定向/缓存/重试，单请求 10 秒、原始响应 256 KiB。三端点真实 HTTP 验证与模拟契约分别记入 TESTING；该验证不属于真实 HA/EOAIC2 或物理设备验收。

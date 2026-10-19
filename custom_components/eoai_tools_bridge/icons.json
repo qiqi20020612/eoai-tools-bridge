@@ -1,8 +1,5 @@
 {
   "services": {
-    "search_web": {
-      "service": "mdi:web"
-    },
     "list_tools": {
       "service": "mdi:format-list-bulleted"
     },

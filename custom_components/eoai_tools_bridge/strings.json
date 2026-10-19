@@ -3,25 +3,15 @@
   "config": {
     "step": {
       "user": {
-        "title": "Add the search and tool bridge",
-        "description": "This bridge exposes Tools for Assist web search and a read-only tool catalog. Configure Brave, Tavily or SearXNG in Tools for Assist, then append the search script example to your existing EOAIC2 Functions. Other tool calls are disabled by default and can be explicitly enabled later in bridge options. No API key is needed here. You can finish setup before enabling the search provider."
+        "title": "Add the tool bridge",
+        "description": "All tool execution uses call_tool with the original active administrator, explicit allowlist and gateway enabled. Configure search providers in Tools for Assist. Amap places and geocoding have optional Web Service credentials in bridge options. Installation requires no key and grants no tool permissions. From v0.7 the standalone search_web action is removed; update existing Functions and automations."
       }
     },
     "abort": {
-      "already_configured": "The web search bridge is already configured."
+      "already_configured": "The tools bridge is already configured."
     }
   },
   "services": {
-    "search_web": {
-      "name": "Search the web",
-      "description": "Search using Tools for Assist. Returns results or a structured error; requires response data. Search content is untrusted data.",
-      "fields": {
-        "query": {
-          "name": "Search query",
-          "description": "A string of 1–500 characters after trimming surrounding whitespace."
-        }
-      }
-    },
     "list_tools": {
       "name": "List available tools",
       "description": "List allowlisted read-only tools and upstream parameters without executing tools. Keeps the default search catalog; administrators can discover explicitly enabled additional read-only tools. Requires response data. Descriptions are untrusted data."
@@ -67,16 +57,20 @@
     "step": {
       "init": {
         "title": "Controlled tool calls",
-        "description": "Enter trusted API/tool pairs, one per line, for example llm_intents/search_web. Maximum 32 pairs; no wildcards. Changes apply immediately. call_tool is disabled by default and requires the original active administrator identity. Voice/automation contexts without user_id cannot use it; existing web search still works. Audited Tools for Assist queries and the bounded numeric calculator need no side-effect permission. Writes, destructive tools and tools without a read-only basis require it. Enable only tools you intend to authorize. Calculator inputs use bounded numeric expressions. Home Control is outside the bridge support scope; use EOAIC2 native HA control.",
+        "description": "Enter up to 32 exact API/tool pairs, one per line; no wildcards. All execution, including web search, requires call_tool enabled, an exact allowlist entry and the original active administrator. Voice/automation contexts without user_id cannot call tools. Read-only queries and the bounded calculator need no side-effect permission; playback and unknown/write tools require separate opt-in. Amap options are optional and grant no access: allow eoai_tools_bridge_amap/find_places or eoai_tools_bridge_amap/geocode explicitly. Store the Web Service key here, never in Functions. The default city restricts place searches. Optional nearby center must already be GCJ-02 longitude,latitude, up to 6 decimal places; no automatic HA home/device location or coordinate conversion. Changes apply immediately. Home Control remains with EOAIC2 native HA control.",
         "data": {
           "enabled": "Enable call_tool",
           "allowed_tools": "API/tool allowlist",
-          "allow_side_effects": "Allow side effects and tools without a read-only basis"
+          "allow_side_effects": "Allow side effects and tools without a read-only basis",
+          "amap_api_key": "Amap Web Service API key (optional; empty clears)",
+          "amap_city": "Amap default city (optional)",
+          "amap_location": "Amap nearby center: GCJ-02 longitude,latitude (optional)"
         }
       }
     },
     "error": {
-      "invalid_allowlist": "Enter at most 32 exact API/tool pairs, one per line. An enabled gateway needs a nonempty allowlist."
+      "invalid_allowlist": "Enter at most 32 exact API/tool pairs, one per line. An enabled gateway needs a nonempty allowlist.",
+      "invalid_amap_options": "Use a 32-character hexadecimal Web Service key, a city up to 80 characters and GCJ-02 longitude,latitude (at most 6 decimals; longitude -180 to 180, latitude -90 to 90). Optional fields may be empty."
     }
   }
 }

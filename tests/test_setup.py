@@ -2,9 +2,11 @@
 
 from unittest.mock import patch
 
+import pytest
 from homeassistant.config_entries import SOURCE_USER, ConfigEntryState
 from homeassistant.core import HomeAssistant, SupportsResponse
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.exceptions import ServiceNotFound
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.eoai_tools_bridge import async_setup
@@ -15,7 +17,6 @@ from custom_components.eoai_tools_bridge.const import (
     SERVICE_CHECK_TOOLS,
     SERVICE_DESCRIBE_TOOL,
     SERVICE_LIST_TOOLS,
-    SERVICE_SEARCH_WEB,
 )
 
 
@@ -51,11 +52,9 @@ async def test_register_once_and_response_only(
         SERVICE_CALL_TOOL,
         SERVICE_CHECK_TOOLS,
         SERVICE_DESCRIBE_TOOL,
-        SERVICE_SEARCH_WEB,
         SERVICE_LIST_TOOLS,
     }
     for service in (
-        SERVICE_SEARCH_WEB,
         SERVICE_LIST_TOOLS,
         SERVICE_CALL_TOOL,
         SERVICE_CHECK_TOOLS,
@@ -65,13 +64,18 @@ async def test_register_once_and_response_only(
 
 
 async def test_missing_upstream_does_not_block_loading(
-    hass: HomeAssistant, bridge_entry: MockConfigEntry
+    hass: HomeAssistant, gateway_entry: MockConfigEntry, admin_context
 ) -> None:
-    assert bridge_entry.state is ConfigEntryState.LOADED
+    assert gateway_entry.state is ConfigEntryState.LOADED
     response = await hass.services.async_call(
         DOMAIN,
-        SERVICE_SEARCH_WEB,
-        {"query": "test"},
+        SERVICE_CALL_TOOL,
+        {
+            "api_id": "llm_intents",
+            "tool_name": "search_web",
+            "tool_args": {"query": "test"},
+        },
+        context=admin_context,
         blocking=True,
         return_response=True,
     )
@@ -79,14 +83,24 @@ async def test_missing_upstream_does_not_block_loading(
 
 
 async def test_unload_reload_and_remove(
-    hass: HomeAssistant, bridge_entry: MockConfigEntry, search_api, search_tool
+    hass: HomeAssistant,
+    gateway_entry: MockConfigEntry,
+    search_api,
+    search_tool,
+    admin_context,
 ) -> None:
+    bridge_entry = gateway_entry
     assert await hass.config_entries.async_unload(bridge_entry.entry_id)
-    assert hass.services.has_service(DOMAIN, SERVICE_SEARCH_WEB)
+    assert hass.services.has_service(DOMAIN, SERVICE_CALL_TOOL)
     response = await hass.services.async_call(
         DOMAIN,
-        SERVICE_SEARCH_WEB,
-        {"query": "test"},
+        SERVICE_CALL_TOOL,
+        {
+            "api_id": "llm_intents",
+            "tool_name": "search_web",
+            "tool_args": {"query": "test"},
+        },
+        context=admin_context,
         blocking=True,
         return_response=True,
     )
@@ -95,8 +109,13 @@ async def test_unload_reload_and_remove(
     assert await hass.config_entries.async_setup(bridge_entry.entry_id)
     response = await hass.services.async_call(
         DOMAIN,
-        SERVICE_SEARCH_WEB,
-        {"query": "test"},
+        SERVICE_CALL_TOOL,
+        {
+            "api_id": "llm_intents",
+            "tool_name": "search_web",
+            "tool_args": {"query": "test"},
+        },
+        context=admin_context,
         blocking=True,
         return_response=True,
     )
@@ -106,16 +125,92 @@ async def test_unload_reload_and_remove(
         SERVICE_CALL_TOOL,
         SERVICE_CHECK_TOOLS,
         SERVICE_DESCRIBE_TOOL,
-        SERVICE_SEARCH_WEB,
         SERVICE_LIST_TOOLS,
     }
     await hass.config_entries.async_remove(bridge_entry.entry_id)
     response = await hass.services.async_call(
         DOMAIN,
-        SERVICE_SEARCH_WEB,
-        {"query": "test"},
+        SERVICE_CALL_TOOL,
+        {
+            "api_id": "llm_intents",
+            "tool_name": "search_web",
+            "tool_args": {"query": "test"},
+        },
+        context=admin_context,
         blocking=True,
         return_response=True,
     )
     assert response["error_code"] == "bridge_not_loaded"
     assert search_tool.call.await_count == 1
+
+
+async def test_removed_search_action_is_not_registered(hass, bridge_entry):
+    assert not hass.services.has_service(DOMAIN, "search_web")
+    with pytest.raises(ServiceNotFound):
+        await hass.services.async_call(
+            DOMAIN, "search_web", {"query": "test"}, blocking=True, return_response=True
+        )
+
+
+async def test_setup_removes_stale_legacy_registration(hass):
+    from unittest.mock import AsyncMock
+
+    legacy = AsyncMock()
+    hass.services.async_register(DOMAIN, "search_web", legacy)
+    assert await async_setup(hass, {})
+    assert not hass.services.has_service(DOMAIN, "search_web")
+    assert await async_setup(hass, {})
+    assert len(hass.services.async_services()[DOMAIN]) == 4
+    legacy.assert_not_called()
+
+
+async def test_upgrade_does_not_grant_search_permissions(
+    hass, bridge_entry, admin_context, search_api, search_tool
+):
+    assert bridge_entry.options == {}
+    assert await hass.config_entries.async_reload(bridge_entry.entry_id)
+    assert bridge_entry.options == {}
+    data = {
+        "api_id": "llm_intents",
+        "tool_name": "search_web",
+        "tool_args": {"query": "test"},
+    }
+    response = await hass.services.async_call(
+        DOMAIN,
+        SERVICE_CALL_TOOL,
+        data,
+        context=admin_context,
+        blocking=True,
+        return_response=True,
+    )
+    assert response["error_code"] == "gateway_disabled"
+    search_tool.call.assert_not_called()
+
+
+async def test_upgrade_preserves_explicit_options_and_admin_requirement(
+    hass, gateway_entry, admin_context, search_api, search_tool
+):
+    previous = dict(gateway_entry.options)
+    assert await hass.config_entries.async_reload(gateway_entry.entry_id)
+    assert dict(gateway_entry.options) == previous
+    data = {
+        "api_id": "llm_intents",
+        "tool_name": "search_web",
+        "tool_args": {"query": " test "},
+    }
+    denied = await hass.services.async_call(
+        DOMAIN, SERVICE_CALL_TOOL, data, blocking=True, return_response=True
+    )
+    assert denied["error_code"] == "permission_denied"
+    response = await hass.services.async_call(
+        DOMAIN,
+        SERVICE_CALL_TOOL,
+        data,
+        context=admin_context,
+        blocking=True,
+        return_response=True,
+    )
+    assert response["success"] is True
+    assert response["result"]["results"]
+    assert search_tool.call.call_args.args[1].tool_args == {"query": "test"}
+    assert search_tool.call.call_args.args[2].context is admin_context

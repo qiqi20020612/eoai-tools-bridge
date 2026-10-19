@@ -14,7 +14,6 @@ from custom_components.eoai_tools_bridge.const import (
     SERVICE_CHECK_TOOLS,
     SERVICE_DESCRIBE_TOOL,
     SERVICE_LIST_TOOLS,
-    SERVICE_SEARCH_WEB,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -22,16 +21,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 async def test_runtime_action_description(hass, bridge_entry):
     descriptions = await async_get_all_descriptions(hass)
-    description = descriptions[DOMAIN][SERVICE_SEARCH_WEB]
-    assert description["fields"]["query"]["required"] is True
-    assert description["response"] == {"optional": False}
+    assert "search_web" not in descriptions[DOMAIN]
     english = await async_get_translations(hass, "en", "services", {DOMAIN})
     chinese = await async_get_translations(hass, "zh-Hans", "services", {DOMAIN})
-    key = f"component.{DOMAIN}.services.{SERVICE_SEARCH_WEB}"
-    assert english[f"{key}.name"] == "Search the web"
-    assert english[f"{key}.fields.query.name"] == "Search query"
-    assert chinese[f"{key}.name"] == "搜索网页"
-    assert chinese[f"{key}.fields.query.name"] == "搜索内容"
+    assert not any(".services.search_web." in key for key in english | chinese)
     catalog = descriptions[DOMAIN][SERVICE_LIST_TOOLS]
     assert catalog["fields"] == {}
     assert catalog["response"] == {"optional": False}
@@ -63,7 +56,7 @@ async def test_runtime_action_description(hass, bridge_entry):
 def test_documented_yaml_matches_delivered_example():
     blocks = re.findall(r"```yaml\n(.*?)\n```", (ROOT / "README.md").read_text(), re.S)
     documented = next(yaml.safe_load(block) for block in blocks if "- spec:" in block)
-    delivered = yaml.safe_load((ROOT / "examples/eoaic2_functions.yaml").read_text())
+    delivered = yaml.safe_load((ROOT / "examples/eoaic2_web_search.yaml").read_text())
     assert documented == delivered
 
 
@@ -74,7 +67,7 @@ def test_runtime_english_translation_and_chinese_keys():
     chinese = json.loads((path / "translations/zh-Hans.json").read_text())
     assert source == english
     assert chinese["config"]["abort"]["already_configured"]
-    assert chinese["services"][SERVICE_SEARCH_WEB]["fields"]["query"]["name"]
+    assert "search_web" not in chinese["services"]
     assert chinese["services"][SERVICE_LIST_TOOLS]["name"]
     assert chinese["services"][SERVICE_CHECK_TOOLS]["name"]
     assert chinese["services"][SERVICE_CALL_TOOL]["fields"]["tool_args"]["name"]
@@ -82,6 +75,9 @@ def test_runtime_english_translation_and_chinese_keys():
         "enabled",
         "allowed_tools",
         "allow_side_effects",
+        "amap_api_key",
+        "amap_city",
+        "amap_location",
     }
 
 

@@ -1,16 +1,14 @@
-"""Check unmodified Tools for Assist 1.11.0 against the v0.5 bridge runtime."""
+"""Check unmodified Tools for Assist 1.11.0 against the controlled bridge runtime."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
-import probatio as vol
 import pytest
 from conftest import SearchAPI
 from homeassistant.helpers import llm
 
 from custom_components.eoai_tools_bridge.const import (
     DOMAIN,
-    MAX_CONTENT_LENGTH,
     MAX_RESPONSE_BYTES,
     MAX_TOOL_RESULT_TEXT,
 )
@@ -89,6 +87,15 @@ async def call(hass, action, data=None, context=None):
     )
 
 
+async def search(hass, context, arguments):
+    return await call(
+        hass,
+        "call_tool",
+        {"api_id": "llm_intents", "tool_name": "search_web", "tool_args": arguments},
+        context,
+    )
+
+
 async def test_new_provider_catalog_and_readiness_need_no_runtime_change(
     hass, gateway_entry, admin_context, tavily_api, tavily_tool, http_backend
 ):
@@ -117,12 +124,12 @@ async def test_new_provider_catalog_and_readiness_need_no_runtime_change(
 
 
 @pytest.mark.parametrize("query", ["123", "{{ states('light.private') }}"])
-async def test_fixed_search_uses_original_tavily_with_unchanged_query_contract(
-    hass, bridge_entry, tavily_api, http_backend, query
+async def test_generic_search_uses_original_tavily_with_unchanged_query_contract(
+    hass, gateway_entry, admin_context, tavily_api, http_backend, query
 ):
-    response = await call(hass, "search_web", {"query": query})
+    response = await search(hass, admin_context, {"query": query})
     assert response["success"] is True
-    assert response["results"] == [
+    assert response["result"]["results"] == [
         {"title": "Simulated title", "content": "Simulated snippet"}
     ]
     payload = http_backend[0].post.call_args.kwargs["json"]
@@ -192,34 +199,27 @@ async def test_new_provider_keeps_native_argument_rejection(
     http_backend[0].post.assert_not_called()
 
 
-async def test_fixed_search_still_rejects_extra_filters(
-    hass, bridge_entry, tavily_api, http_backend
-):
-    with pytest.raises(vol.Invalid):
-        await call(hass, "search_web", {"query": "123", "topic": "news"})
-    assert tavily_api.contexts == []
-    http_backend[0].post.assert_not_called()
-
-
 async def test_tavily_generated_answer_and_empty_results_are_supported(
-    hass, bridge_entry, tavily_api, tavily_tool, release_source, http_backend
+    hass,
+    gateway_entry,
+    admin_context,
+    tavily_api,
+    tavily_tool,
+    release_source,
+    http_backend,
 ):
     tavily_tool.config[release_source("const").CONF_TAVILY_INCLUDE_ANSWER] = True
     http_backend[1].json.return_value = {"answer": "Simulated answer", "results": []}
-    response = await call(hass, "search_web", {"query": "123"})
-    assert response["results"] == [
+    response = await search(hass, admin_context, {"query": "123"})
+    assert response["result"]["results"] == [
         {"title": "Tavily answer", "content": "Simulated answer"}
     ]
     http_backend[1].json.return_value = {"results": []}
-    empty = await call(hass, "search_web", {"query": "123"})
+    empty = await search(hass, admin_context, {"query": "123"})
     assert empty["success"] is True
-    assert empty["results"] == []
+    assert empty["result"]["results"] == "No results found"
 
 
-@pytest.mark.parametrize(
-    "action,limit",
-    [("search_web", MAX_CONTENT_LENGTH), ("call_tool", MAX_TOOL_RESULT_TEXT)],
-)
 async def test_tavily_full_page_content_keeps_bridge_output_limits(
     hass,
     gateway_entry,
@@ -228,8 +228,6 @@ async def test_tavily_full_page_content_keeps_bridge_output_limits(
     tavily_tool,
     release_source,
     http_backend,
-    action,
-    limit,
 ):
     tavily_tool.config[release_source("const").CONF_TAVILY_INCLUDE_RAW_CONTENT] = True
     http_backend[1].json.return_value = {
@@ -241,27 +239,20 @@ async def test_tavily_full_page_content_keeps_bridge_output_limits(
             }
         ]
     }
-    data = {"query": "123"}
-    if action == "call_tool":
-        data = {"api_id": "llm_intents", "tool_name": "search_web", "tool_args": data}
-    response = await call(hass, action, data, admin_context)
+    response = await search(hass, admin_context, {"query": "123"})
     assert response["success"] is True
     assert response["truncated"] is True
-    body = response["result"] if action == "call_tool" else response
-    assert len(body["results"][0]["content"]) == limit
+    body = response["result"]
+    assert len(body["results"][0]["content"]) == MAX_TOOL_RESULT_TEXT
     assert len(json.dumps(response, ensure_ascii=False).encode()) <= MAX_RESPONSE_BYTES
 
 
-@pytest.mark.parametrize("action", ["search_web", "call_tool"])
 async def test_tavily_http_error_does_not_escape_bridge_response(
-    hass, gateway_entry, admin_context, tavily_api, http_backend, action
+    hass, gateway_entry, admin_context, tavily_api, http_backend
 ):
     http_backend[1].status = 502
     http_backend[1].text.return_value = "<html>simulated private error</html>"
-    data = {"query": "123"}
-    if action == "call_tool":
-        data = {"api_id": "llm_intents", "tool_name": "search_web", "tool_args": data}
-    response = await call(hass, action, data, admin_context)
+    response = await search(hass, admin_context, {"query": "123"})
     assert response["error_code"] == "upstream_error"
     assert "simulated private error" not in json.dumps(response)
 

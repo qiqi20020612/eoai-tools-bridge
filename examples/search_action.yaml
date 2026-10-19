@@ -1,3 +1,0 @@
-action: eoai_tools_bridge.search_web
-data:
-  query: "Home Assistant 2026.10 release notes"

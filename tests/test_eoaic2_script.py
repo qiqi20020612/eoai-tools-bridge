@@ -6,7 +6,6 @@ script contract test, not a live Assist/conversation/TTS end-to-end test.
 
 from pathlib import Path
 
-import probatio as vol
 import pytest
 import yaml
 from homeassistant.core import Context
@@ -25,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @pytest.fixture
 def function_config():
-    example = yaml.safe_load((ROOT / "examples/eoaic2_functions.yaml").read_text())
+    example = yaml.safe_load((ROOT / "examples/eoaic2_web_search.yaml").read_text())
     assert example[0]["spec"]["name"] == "web_search"
     return example[0]["function"]
 
@@ -44,14 +43,15 @@ def function_config():
 )
 async def test_original_script_returns_function_result(
     hass,
-    bridge_entry,
+    gateway_entry,
+    admin_context,
     search_api,
     search_tool,
     upstream_script_function,
     function_config,
     query,
 ):
-    context = Context(user_id="original-user", parent_id="voice-request")
+    context = admin_context
     source_context = llm.LLMContext(
         platform="extended_openai_conversation",
         context=context,
@@ -64,8 +64,9 @@ async def test_original_script_returns_function_result(
         hass, config, {"query": query}, source_context, []
     )
     assert response["success"] is True
-    assert response["query"] == query
-    assert response["results"] == [{"title": "Test title", "content": "Test snippet"}]
+    assert response["result"]["results"] == [
+        {"title": "Test title", "content": "Test snippet"}
+    ]
     tool_input = search_tool.call.call_args.args[1]
     bridge_context = search_tool.call.call_args.args[2]
     assert tool_input.tool_args == {"query": query}
@@ -74,38 +75,55 @@ async def test_original_script_returns_function_result(
 
 
 async def test_original_script_returns_friendly_search_failure(
-    hass, bridge_entry, upstream_script_function, function_config
+    hass, gateway_entry, admin_context, upstream_script_function, function_config
 ):
     response = await upstream_script_function.execute(
         hass,
         upstream_script_function.validate_schema(function_config),
         {"query": "today AI news"},
-        None,
+        llm.LLMContext(
+            platform="test",
+            context=admin_context,
+            language="en",
+            assistant="conversation",
+            device_id=None,
+        ),
         [],
     )
     assert response["success"] is False
     assert response["error_code"] == "api_unavailable"
-    assert response["results"] == []
+    assert response["result"] is None
 
 
 async def test_field_template_would_coerce_a_numeric_query(
     hass,
-    bridge_entry,
+    gateway_entry,
+    admin_context,
     search_api,
     search_tool,
     upstream_script_function,
     function_config,
 ):
-    # Reproduce why the task brief's suggested per-field template was adjusted.
-    function_config["sequence"][0]["data"] = {"query": "{{ query }}"}
-    with pytest.raises(vol.Invalid):
-        await upstream_script_function.execute(
-            hass,
-            upstream_script_function.validate_schema(function_config),
-            {"query": "123"},
-            None,
-            [],
-        )
+    # Per-field rendering would turn a string-like number into an integer.
+    function_config["sequence"][0]["data"] = {
+        "api_id": "llm_intents",
+        "tool_name": "search_web",
+        "tool_args": {"query": "{{ query }}"},
+    }
+    response = await upstream_script_function.execute(
+        hass,
+        upstream_script_function.validate_schema(function_config),
+        {"query": "123"},
+        llm.LLMContext(
+            platform="test",
+            context=admin_context,
+            language="en",
+            assistant="conversation",
+            device_id=None,
+        ),
+        [],
+    )
+    assert response["error_code"] == "invalid_args"
     search_tool.call.assert_not_called()
 
 

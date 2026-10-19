@@ -22,6 +22,9 @@ async def test_options_start_disabled_and_do_not_open_apis(
         CONF_ENABLED: False,
         CONF_ALLOWED_TOOLS: "",
         CONF_ALLOW_SIDE_EFFECTS: False,
+        "amap_api_key": "",
+        "amap_city": "",
+        "amap_location": "",
     }
     assert get_policy(hass).enabled is False
     assert search_api.contexts == []

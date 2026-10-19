@@ -245,14 +245,6 @@ async def test_large_original_brave_results_through_actions_and_eoaic2(
                 release_source("base_web_search"), "SQLiteCache", return_value=cache
             ),
         ):
-            fixed = await hass.services.async_call(
-                DOMAIN,
-                "search_web",
-                {"query": arguments["query"]},
-                context=admin_context,
-                blocking=True,
-                return_response=True,
-            )
             direct = await hass.services.async_call(
                 DOMAIN,
                 "call_tool",
@@ -277,9 +269,6 @@ async def test_large_original_brave_results_through_actions_and_eoaic2(
                 ),
                 [],
             )
-        assert fixed["success"] is True
-        assert fixed["results"][0]["title"] == "Result 0"
-        assert encoded_size(fixed) <= MAX_RESPONSE_BYTES
         for response in [direct, scripted]:
             assert response["success"] is True
             assert response["truncated"] is True
@@ -293,9 +282,9 @@ async def test_large_original_brave_results_through_actions_and_eoaic2(
             else:
                 assert first["content"][0].startswith("摘要 0 ")
             assert "instruction" not in response["result"]
-        # Three deliberate requests: fixed action, generic action and script.
-        assert session.get.call_count == 3
-        for request in session.get.call_args_list[1:]:
+        # Two deliberate requests: generic action and EOAIC2 script.
+        assert session.get.call_count == 2
+        for request in session.get.call_args_list:
             params = request.kwargs["params"]
             if freshness is None:
                 assert "freshness" not in params

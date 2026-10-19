@@ -1,10 +1,14 @@
 # 版本记录
 
-## 未发布 — 1.0 前规划调整
+## 0.7.0 — 2026-10-19
 
-- 新增高德地图地点位置工具：以 Tools for Assist 的 find_places、get_route 及所需位置解析为功能参考，在本项目独立实现高德数据源，现有 Google 工具直通保留兼容。
-- 拟按 v0.7 地点/位置解析、v0.8 路线、v0.9 迁移联调与真实验收推进；未完成必需项时继续后续 0.x。将高德实现、能力映射、模拟契约与真实验收加入 1.0 门槛，Home Control 继续排除。
-- 本次仅更新规划与开发约定，高德功能尚未开发或发布；当前发布版本仍为 v0.6.1。
+- **接口变更：删除独立 eoai_tools_bridge.search_web 服务。** 移除专用注册、search.py 执行/规范化链路、旧 Schema/常量、旧示例及专用测试；仅保留 list_tools、check_tools、describe_tool、call_tool。启动清理残留旧注册，旧服务调用不再有执行回退。
+- **迁移：**在桥接选项启用 call_tool，明确允许 llm_intents/search_web；搜索同样要求原始有效管理员 Context。把 query 放入 tool_args，改读 result.results，先检查 success。新 examples/eoaic2_web_search.yaml 保留模型函数名 web_search，但底层统一调用 call_tool；替换旧 Functions，不重复追加同名函数。完整步骤见 [迁移说明](MIGRATION_0_7.md)。
+- 保留 Tools for Assist 搜索工具、原生 freshness/topic/time_range 参数、只读审核和精确白名单。共享 validate_query 移至 validation.py，500 字符/空白/有效 Unicode 校验保留；既有权限、计算器、副作用、取消/超时机制及 v0.6.1 的 payload.py 裁剪不变。升级不自动授权，不补造管理员身份。
+- 新增本项目独立的 eoai_tools_bridge_amap/find_places 与 geocode，只读高德关键词/附近地点和地址候选解析。增加可选 Web 服务 Key、默认城市和 GCJ-02 经度,纬度中心配置；密钥不进入模型参数、日志、缓存、源码或发布包。Google 原工具仍保留原身份，不静默切换数据源。
+- 高德沿用统一发现/检查/描述/执行入口，原生 API 亦检查桥接策略。固定 HTTPS 端点、无重定向/重试/缓存、10 秒请求与 256 KiB 响应上限；字段按实际返回保留，地址歧义不自动选第一项，错误不伪装成空成功。参数、排序限制与字段差异见 [高德说明](AMAP.md)。
+- 本地 512 项模拟/契约测试通过，0 skipped，含原版 EOAIC2 和 Tools for Assist 契约。另用内存中的测试 Key 真实验证三个高德端点：关键词/附近各 2 项、地址解析 1 个候选，均有有效 GCJ-02 坐标。真实 HA/EOAIC2/升级验收另行记录，未开发高德路线，继续 0.x。
+- 用户报告 v0.6.1 总体验收通过，不据此补写逐后端或设备证据。
 
 ## 0.6.1 — 2026-10-19
 

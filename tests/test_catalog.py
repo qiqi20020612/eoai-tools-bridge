@@ -22,7 +22,6 @@ from custom_components.eoai_tools_bridge.const import (
     SERVICE_CHECK_TOOLS,
     SERVICE_DESCRIBE_TOOL,
     SERVICE_LIST_TOOLS,
-    SERVICE_SEARCH_WEB,
     TOOL_NAME,
 )
 
@@ -395,14 +394,13 @@ async def test_catalog_unload_reload_remove(
     "missing",
     [
         SERVICE_LIST_TOOLS,
-        SERVICE_SEARCH_WEB,
         SERVICE_CALL_TOOL,
         SERVICE_CHECK_TOOLS,
         SERVICE_DESCRIBE_TOOL,
     ],
 )
 async def test_setup_registers_only_missing_action(hass, bridge_entry, missing):
-    other = SERVICE_SEARCH_WEB if missing == SERVICE_LIST_TOOLS else SERVICE_LIST_TOOLS
+    other = SERVICE_CALL_TOOL if missing == SERVICE_LIST_TOOLS else SERVICE_LIST_TOOLS
     hass.services.async_remove(DOMAIN, missing)
     with patch.object(
         type(hass.services), "async_register", wraps=hass.services.async_register

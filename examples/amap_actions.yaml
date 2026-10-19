@@ -1,0 +1,23 @@
+# Configure the optional Amap Web Service key in bridge options, never here.
+# Enable call_tool, allow both exact pairs below, and use the original admin.
+- action: eoai_tools_bridge.call_tool
+  data:
+    api_id: eoai_tools_bridge_amap
+    tool_name: find_places
+    tool_args:
+      query: 咖啡
+      city: 北京市
+      location: "116.397499,39.908722"
+      radius: 3000
+      sort: distance
+      types: "050000"
+      limit: 5
+  response_variable: places_response
+- action: eoai_tools_bridge.call_tool
+  data:
+    api_id: eoai_tools_bridge_amap
+    tool_name: geocode
+    tool_args:
+      address: 北京市东城区天安门
+      city: 北京市
+  response_variable: location_response

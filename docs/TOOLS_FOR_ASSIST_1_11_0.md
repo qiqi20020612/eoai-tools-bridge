@@ -1,5 +1,7 @@
 # Tools for Assist 1.11.0 兼容核对
 
+> 历史记录：下文固定搜索服务的说明属于 v0.5 核对时行为。v0.7 已移除独立 `eoai_tools_bridge.search_web`，当前所有搜索均通过 `call_tool`；请按 [迁移说明](MIGRATION_0_7.md) 更新 Functions 和授权。上游工具身份及 Tavily 原生参数继续保留。
+
 核对日期：**2026-10-19（Asia/Shanghai）**。本记录保留 v0.5.0 的独立上游核对结论；后续 v0.6.0 的开发、发布和当前范围见 [兼容清单](TOOLS_COMPATIBILITY.md) 与 [测试记录](TESTING.md)。核对对象：桥接 **v0.5.0**、HA Core **2026.10.0**、Tools for Assist **1.11.0**。
 
 **该阶段结论：v0.5.0 运行代码无需兼容修复，可继续配合 Tools for Assist 1.11.0 使用已支持的工具。** Tavily 复用既有搜索入口；新增的两个可选筛选参数可由现有 `call_tool` 原样传入。该阶段仅补充测试、固定源码快照和文档，未改变桥接运行代码或发布版本。随后用户明确取消 Home Control API；v0.6.0 推进计算器和媒体播放，Home Control 不再属于后续开发或 1.0 验收范围。

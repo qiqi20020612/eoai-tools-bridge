@@ -8,8 +8,9 @@
       credentials, network connectivity or argument values. success means the
       check completed, not that every tool is ready. Report each tool status.
       A ready status is a snapshot and grants no new permissions. Never retry
-      side effects or expand permissions based on this response. Existing
-      web_search and device-control functions can be used independently.
+      side effects or expand permissions based on this response. Web search
+      also executes through call_tool and requires its permissions. Use EOAIC2
+      native device-control functions for Home Assistant control.
     parameters:
       type: object
       properties: {}
