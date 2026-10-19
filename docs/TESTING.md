@@ -163,6 +163,8 @@ v0.5 当时的后续计划包含计算器、媒体播放及 Home Control 动态�
 
 本地安装 ZIP 内容核对通过：41 个文件逐字节匹配工作区；项目、锁文件和 Manifest 均为 0.6.0，中英文 JSON、ZIP 完整性及 SHA-256 文件正确，未包含测试、上游源码、缓存或开发环境。EOAIC2 4 个、Tools for Assist 两套共 42 个固定文件的获取/校验流程通过。
 
+实现提交 `9032523117ef7f0c1a3af0ea45e831f29b6c647c` 的 [v0.6.0 CI](https://github.com/qiqi20020612/eoai-tools-bridge/actions/runs/39260447158) 全部通过：Ubuntu 执行 **443 项测试，0 skipped**，Ruff、固定源码验证及安装包构建通过；官方 Hassfest 通过，HACS 的全部 **9 项**仓库校验通过。后续发布记录及 EOAIC2 示例说明更新保持脚本接线不变；最终提交、CI 与资产见 [v0.6.0 Release](https://github.com/qiqi20020612/eoai-tools-bridge/releases/tag/v0.6.0)。
+
 **媒体已知限制如实记录：**原版播放工具取得管理员 LLMContext，却未在下游播放服务调用中传入 Context。测试确认模拟服务 user_id 为空，未修补上游或 HA Core。入口权限仍由桥接检查；真实设备需单独确认这一行为。SymPy 与其他上游同步代码仍须正常返回，异步超时不构成同步 CPU 抢占。
 
 ## v0.6.0 尚待实际运行验收

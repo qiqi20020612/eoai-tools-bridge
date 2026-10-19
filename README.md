@@ -309,7 +309,7 @@ data:
 
 动作只接受 `api_id/tool_name`，必须接收响应；没有 `tool_args`。它可在副作用许可关闭时查看播放参数，不执行工具、参数校验器或默认工厂，不授予执行权限。响应含 `tool.parameters`、`read_only_basis`、`requires_side_effects` 和 `side_effects_allowed`。`list_tools` 继续只读，`check_tools` 继续完全不执行参数逻辑；描述动作的 Schema 转换可能调用原生序列化器，与就绪检查的边界不同。
 
-描述采用目录相同的严格 Schema、文字和 16 KiB 预算，10 秒异步超时；身份、选项、工具对象或 Schema 变化时丢弃结果。失败时 `tool=null`，错误使用固定消息。沿用 `call_tool` 的加载、授权、API 和权限变化错误，另有 `invalid_metadata/invalid_schema/tool_changed/timeout`；不返回部分描述。可选追加 [EOAIC2 describe_allowed_tool](examples/eoaic2_describe_tool.yaml)，把原始响应送回 `_function_result`。
+描述采用目录相同的严格 Schema、文字和 16 KiB 预算，10 秒异步超时；身份、选项、工具对象或 Schema 变化时丢弃结果。失败时 `tool=null`，错误使用固定消息。沿用 `call_tool` 的加载、授权、API 和权限变化错误，另有 `invalid_metadata/invalid_schema/tool_changed/timeout`；不返回部分描述。可选追加 [EOAIC2 describe_allowed_tool](examples/eoaic2_describe_tool.yaml)，把原始响应送回 `_function_result`。已有 `call_allowed_tool/list_search_tools` 可用本版本示例更新工具描述，使模型识别参数描述和计算器限制；名称与脚本接线保持兼容。
 
 计算器加入 `basic_utilities/calculate` 后无需开启副作用许可，见 [计算动作](examples/calculator_action.yaml)：
 
