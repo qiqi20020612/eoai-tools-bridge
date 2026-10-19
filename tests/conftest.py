@@ -148,3 +148,135 @@ def tools_source():
         for name in list(sys.modules):
             if name == prefix or name.startswith(prefix + "."):
                 sys.modules.pop(name)
+
+
+@pytest.fixture
+def release_source():
+    """Use a separate release cache, preserving the existing source baseline."""
+    import hashlib
+    import importlib
+    import sys
+    from types import ModuleType
+
+    from scripts.fetch_tools_upstream import RELEASE_DESTINATION, RELEASE_FILES
+
+    for name, expected in RELEASE_FILES.items():
+        path = RELEASE_DESTINATION / name
+        assert path.exists(), "Run python scripts/fetch_tools_upstream.py first"
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == expected
+    prefix = "_eoai_bridge_tools_1_11_contract"
+    package = ModuleType(prefix)
+    package.__path__ = [str(RELEASE_DESTINATION)]
+    sys.modules[prefix] = package
+    try:
+        yield lambda name: importlib.import_module(f"{prefix}.{name}")
+    finally:
+        for name in list(sys.modules):
+            if name == prefix or name.startswith(prefix + "."):
+                sys.modules.pop(name)
+
+
+@pytest.fixture
+def upstream_script_function():
+    """Load original modules without starting the full upstream integration."""
+    import hashlib
+    import importlib
+    import sys
+    from types import ModuleType
+
+    from scripts.fetch_test_upstream import DESTINATION, FILES
+
+    for relative_path, expected in FILES.items():
+        path = DESTINATION / relative_path
+        if not path.exists():
+            pytest.skip("Run python scripts/fetch_test_upstream.py first")
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == expected
+
+    prefix = "_eoai_bridge_contract_upstream"
+    # Namespace packages avoid executing upstream's unrelated full integration
+    # and function registry. const/base/exceptions/script themselves are original.
+    for suffix, directory in [
+        ("", DESTINATION),
+        (".functions", DESTINATION / "functions"),
+    ]:
+        module = ModuleType(prefix + suffix)
+        module.__path__ = [str(directory)]
+        sys.modules[prefix + suffix] = module
+    try:
+        script_module = importlib.import_module(prefix + ".functions.script")
+        yield script_module.ScriptFunction()
+    finally:
+        for name in list(sys.modules):
+            if name == prefix or name.startswith(prefix + "."):
+                sys.modules.pop(name)
+
+
+@pytest.fixture
+def release_apis(release_source):
+    """Load original API classes without running integration setup."""
+    import sys
+
+    const = release_source("const")
+    package = sys.modules[const.__package__]
+    # The original __init__ re-exports these; use its original const values
+    # while avoiding full integration setup/circular initialization.
+    package.CONF_SEARCH_PROVIDER = const.CONF_SEARCH_PROVIDER
+    package.CONF_SEARCH_PROVIDER_BRAVE = const.CONF_SEARCH_PROVIDER_BRAVE
+    return release_source("llm_functions")
+
+
+@pytest.fixture
+async def calculator_api(hass, release_apis, release_source):
+    const = release_source("const")
+    api = release_apis.BasicUtilitiesAPI(
+        hass, {const.CONF_CALCULATOR_ENABLED: True}, const.BASIC_UTILITIES_API_NAME
+    )
+    unregister = llm.async_register_api(hass, api)
+    yield api
+    unregister()
+
+
+@pytest.fixture
+def video_entities(hass, bridge_entry):
+    """Real HA registries/states with simulated media devices, never hardware."""
+    from homeassistant.components.media_player import MediaPlayerEntityFeature
+    from homeassistant.helpers import area_registry as ar
+    from homeassistant.helpers import device_registry as dr
+    from homeassistant.helpers import entity_registry as er
+
+    entities = []
+    for index, room in enumerate(("Living Room", "Kitchen")):
+        area = ar.async_get(hass).async_create(room)
+        device = dr.async_get(hass).async_get_or_create(
+            config_entry_id=bridge_entry.entry_id,
+            identifiers={("test", str(index))},
+        )
+        device = dr.async_get(hass).async_update_device(device.id, area_id=area.id)
+        entity = er.async_get(hass).async_get_or_create(
+            "media_player",
+            "test",
+            str(index),
+            suggested_object_id=f"video_{index}",
+            device_id=device.id,
+        )
+        hass.states.async_set(
+            entity.entity_id,
+            "off",
+            {
+                "device_class": "tv",
+                "supported_features": int(MediaPlayerEntityFeature.PLAY_MEDIA),
+            },
+        )
+        entities.append((entity, device, area))
+    return entities
+
+
+@pytest.fixture
+async def media_api(hass, release_apis, release_source, video_entities):
+    const = release_source("const")
+    api = release_apis.MediaAPI(
+        hass, {const.CONF_YOUTUBE_ENABLED: True}, const.MEDIA_API_NAME
+    )
+    unregister = llm.async_register_api(hass, api)
+    yield api
+    unregister()

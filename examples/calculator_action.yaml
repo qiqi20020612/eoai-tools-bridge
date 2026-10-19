@@ -1,0 +1,8 @@
+# Explicitly allow basic_utilities/calculate and enable call_tool first.
+action: eoai_tools_bridge.call_tool
+data:
+  api_id: basic_utilities
+  tool_name: calculate
+  tool_args:
+    operation: expression
+    data: ["12.5*2+3"]

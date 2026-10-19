@@ -17,6 +17,7 @@ from .const import (
     CONF_ALLOWED_TOOLS,
     CONF_ENABLED,
     DOMAIN,
+    LEGACY_READ_ONLY_TOOLS,
     MAX_ALLOWED_TOOLS,
     MAX_IDENTIFIER_LENGTH,
 )
@@ -110,7 +111,8 @@ def read_only_basis(api_id: str, tool: llm.Tool) -> str | None:
     if annotations is llm.Tool.annotations:
         pair = (api_id, tool.name)
         if pair in CATALOG_ALLOWLIST or (
-            pair in AUDITED_READ_ONLY_TOOLS and tool.integration == API_ID
+            pair in AUDITED_READ_ONLY_TOOLS | LEGACY_READ_ONLY_TOOLS
+            and tool.integration == API_ID
         ):
             return "audited_allowlist"
         return None

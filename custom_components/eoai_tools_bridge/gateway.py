@@ -8,6 +8,7 @@ import probatio as vol
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import llm
 
+from .calculator import is_calculator, validate_calculator_args
 from .const import API_ID, DOMAIN, TOOL_NAME, TOOL_TIMEOUT_SECONDS
 from .payload import normalize_tool_result, tool_response, validate_tool_args
 from .policy import async_is_admin, get_policy, read_only_basis, validate_identifier
@@ -83,6 +84,8 @@ async def async_call_tool(hass: HomeAssistant, call: ServiceCall) -> dict[str, A
             arguments = validate_tool_args(parameters(call.data["tool_args"]))
             if (api_id, name) == (API_ID, TOOL_NAME):
                 arguments["query"] = validate_query(arguments["query"])
+            if is_calculator(api_id, tool):
+                validate_calculator_args(arguments)
             stage = "permission_denied"
             if call.context.user_id != original_user_id or not await async_is_admin(
                 hass, call

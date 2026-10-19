@@ -1,11 +1,12 @@
 # 上游源码核对
 
-核对日期：**2026-10-10（Asia/Shanghai）**。开发依据以下实际源码快照，未修改任何上游源码或实际 HA 安装目录。
+初次核对：**2026-10-10**；最近增量核对：**2026-10-19（Asia/Shanghai）**。开发依据以下实际源码快照，未修改任何上游源码或实际 HA 安装目录。
 
 | 项目 | 基准 | 固定提交 |
 | --- | --- | --- |
 | HA Core | `2026.10.0` | `6a811d3359c7b2076dc9e1cf900843a129c044af` |
-| Tools for Assist | `master` | `100e740b93a2a1a6d304329883937193a4571ac0` |
+| Tools for Assist（原基线） | `master` | `100e740b93a2a1a6d304329883937193a4571ac0` |
+| Tools for Assist（当前发布基准） | `1.11.0` | `198e37885fe06e6452d2d6e26bc5e532b1686acc` |
 | EOAIC2 | `develop` | `b0274f752fc01495875522db9281c335af8cf484` |
 
 ## HA Core
@@ -54,7 +55,7 @@ v0.4 增量复核日期为 **2026-10-10**，继续采用上述固定 HA 快照�
 
 v0.5 按上述同一固定提交核对所有工具入口。API 标识为 `llm_intents`、`weather_forecast`、`media_services`、`basic_utilities` 和区分大小写的 `HomeControl`。完整的固定工具、三个网页搜索变体、HA 原生动态平台/脚本和设备相关计时器见 [TOOLS_COMPATIBILITY.md](TOOLS_COMPATIBILITY.md)。Home Control 聚合 HA Assist 平台工具，并按 Tools for Assist 的禁用列表过滤；完整范围随实际加载平台与实体暴露变化。
 
-v0.5 的开发测试通过 `scripts/fetch_tools_upstream.py` 获取 SHA-256 固定的 20 个原版工具/依赖/入口文件到忽略的缓存。namespace 仅用于测试，绕过完整集成初始化，不修改源码。只读查询测试执行原版工具参数和方法；网络、天气和 Recorder 数据获取被模拟，单位换算及日期使用原版计算代码。计算器和媒体播放目前只盘点入口，不声称其原版调用已测试。
+v0.5 的开发测试通过 `scripts/fetch_tools_upstream.py` 获取 SHA-256 固定的 20 个原版工具/依赖/入口文件到忽略的缓存。namespace 仅用于测试，绕过完整集成初始化，不修改源码。只读查询测试执行原版工具参数和方法；网络、天气和 Recorder 数据获取被模拟，单位换算及日期使用原版计算代码。v0.5 当时只盘点计算器和媒体播放入口，未声称其原版调用已测试；后续 v0.6 证据见下节。
 
 新增查询审核集合与默认访问白名单分开。只有用户明确配置的额外组合、启用通用调用、原始有效管理员身份，以及公开 `integration=llm_intents` 才能使用新增审核依据。独立的非只读/破坏性声明优先拒绝只读分类。集合不自动加入配置；默认网页搜索契约保留。
 
@@ -82,3 +83,24 @@ data: "{{ {'query': query} }}"
 遵循 [HA 服务注册规范](https://developers.home-assistant.io/docs/dev_101_services/)，服务注册放在 `async_setup`；卸载后以配置项状态阻止搜索，保留服务使引用它的脚本仍可编辑。重载不重新注册。
 
 按 [HACS 集成要求](https://www.hacs.xyz/docs/publish/integration/) 提供单一 `custom_components` 集成、Manifest、版本、HACS 元数据、许可证和本地图标。HA 2026.10 支持 [集成目录内的 brand 图片](https://developers.home-assistant.io/docs/creating_integration_file_structure/)。[HACS 不支持私有仓库](https://www.hacs.xyz/docs/faq/private_repositories/)；公开发布和实际 HACS 安装验收须与本地测试区分。
+
+## 2026-10-19：Tools for Assist 1.11.0
+
+核对固定发布提交 `198e37885fe06e6452d2d6e26bc5e532b1686acc`。与原基线相比，旧工具的 18 个实现/公共依赖文件未变；新增 Tavily 搜索类及其配置、常量和映射，原 API 标识、工具名及结果结构保留。桥接运行代码无需调整，新增的 topic/time_range 原生枚举可直接通过既有通用调用。固定搜索仍只接受 query，已有 EOAIC2 搜索 YAML 保持可用。
+
+本地 17 项新增原版 Tavily 契约与完整 362 项回归通过（0 skipped），HTTP 和缓存模拟；真实联网与用户环境另行验收。原有 20 文件快照保留，另存固定发布的 22 文件快照用于回归。详见 [TOOLS_FOR_ASSIST_1_11_0.md](TOOLS_FOR_ASSIST_1_11_0.md)。
+
+
+## v0.6：当前范围、参数描述与原版计算/播放
+
+用户已明确取消 Home Control API，EOAIC2 继续承担原生 HA 控制。Home Control 的动态工具/脚本、设备上下文和计时器从后续开发与 1.0 门槛移除；保留 v0.5 历史分类与手工配置行为供兼容，不据此新增 Home Control 支持声明。
+
+1.11.0 的四个非 Home Control API 为 SearchAPI、WeatherAPI、BasicUtilitiesAPI、MediaAPI，共 10 个固定工具、13 个实现。测试通过原版 `llm_functions.py` 实例化并核对全部启用工具，不运行 Tools for Assist 的完整集成初始化，不取得或调用 Home Control API。生产桥接仍只用 HA 公开 API，依赖清单不变。
+
+[calculator.py](https://github.com/skye-harris/llm_intents/blob/198e37885fe06e6452d2d6e26bc5e532b1686acc/custom_components/llm_intents/calculator.py) 的 `calculate` 原生参数为 operation 选择器和字符串数组 data；expression 用 SymPy `sympify`，聚合使用 float/min/max/avg。[SymPy 官方说明](https://docs.sympy.org/latest/modules/core.html#sympy.core.sympify.sympify) 指出 sympify 内部使用 eval，不应传入未经处理的输入。桥接在原生 Schema 校验后增加有限数值 AST 检查和复杂度预算，再把未改写的参数交给原版工具；不导入 SymPy 作为生产依赖。开发测试固定 `sympy==1.14.0` 与其 `mpmath==1.3.0` 依赖，仅用于原版计算器运行。具体限制见 [计算器边界](TOOLS_COMPATIBILITY.md#计算器边界)。
+
+[play_media.py](https://github.com/skye-harris/llm_intents/blob/198e37885fe06e6452d2d6e26bc5e532b1686acc/custom_components/llm_intents/play_media.py) 的 `play_video` 根据 HA 状态与实体/设备/区域注册表构造视频播放器动态选择器，实体参数为多选数组；还接受区域和设备标识。MediaAPI 在读取 API 时更新选择器，不能缓存旧枚举。单个适用播放器可自动选择，多个且未指定目标时返回业务错误。原版工具调用 `media_player.play_media`，失败由桥接按副作用未知结果处理，不自动重试。
+
+**上游 Context 限制：**桥接原样把管理员 Context 交给 API/工具；PlayVideoTool 发起下游播放服务时没有传入 context，因此服务端 user_id 为空。原版方法与模拟 HA 服务测试分别验证这两层行为；不能宣称用户身份完整穿透到设备服务。不修改第三方或 HA Core 来补写 Context；真实播放验收需检查该已知行为。
+
+新增 `describe_tool` 允许管理员先读取一个精确授权工具的公开 Schema，即使播放执行许可尚未开启。它沿用严格、受预算的元数据视图，不执行工具、原生参数校验器或默认工厂；转换可调用原生序列化器。`list_tools` 保持只读目录，`check_tools` 保持不执行 Schema/默认值/序列化钩子的类型与状态检查，两者原有契约不变。原版 EOAIC2 ScriptFunction 新增描述、计算与播放接线测试；真实模型、联网和设备验收另计。

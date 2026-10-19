@@ -1,14 +1,16 @@
 # EOAIC2 Tools Bridge
 
-让 EOAIC2 通过 Home Assistant 原生 LLM API 使用 **Tools for Assist 的搜索、天气、地点/路线、实用工具及实体历史查询**。本集成独立安装和更新，提供 `eoai_tools_bridge.search_web`、只读的 `eoai_tools_bridge.list_tools`、默认关闭的 `eoai_tools_bridge.call_tool`，以及管理员使用的 `eoai_tools_bridge.check_tools` 就绪检查，无需在此配置搜索 API Key。网页搜索以外的工具需要管理员逐项授权。
+让 EOAIC2 通过 Home Assistant 原生 LLM API 使用 **Tools for Assist 的搜索、天气、地点/路线、计算器、实用工具及媒体播放**。本集成独立安装和更新，提供固定搜索 `search_web`、只读目录 `list_tools`、受控调用 `call_tool`、就绪检查 `check_tools` 和单工具参数描述 `describe_tool` 五个 `eoai_tools_bridge` 动作，无需在此配置搜索 API Key。额外工具需要管理员逐项授权，播放还需独立副作用许可。
 
-适用版本：**Home Assistant Core 2026.10.x**；源码与自动化测试基准为 **2026.10.0**。开发环境需要 Python **3.14.2 或更新的 3.14 版本**。集成版本：`0.5.0`。
+**Home Control API 已按用户决定退出项目范围。** HA 设备控制继续使用 EOAIC2 原生 Functions；本项目后续不实现 Home Control 动态控制、脚本、设备上下文或计时器。
+
+适用版本：**Home Assistant Core 2026.10.x**；源码与自动化测试基准为 **2026.10.0**。开发环境需要 Python **3.14.2 或更新的 3.14 版本**。集成版本：`0.6.0`。
 
 ```text
 EOAIC2 web_search（script Function）
   → eoai_tools_bridge.search_web（仅返回响应的 HA 动作）
   → HA LLM API：llm_intents / search_web
-  → Tools for Assist → Brave / Brave LLM Context / SearXNG
+  → Tools for Assist → Brave / Brave LLM Context / Tavily / SearXNG
   → _function_result → EOAIC2 回答
 ```
 
@@ -39,6 +41,7 @@ https://github.com/qiqi20020612/eoai-tools-bridge
 通过 HACS 独立安装 [Tools for Assist](https://github.com/skye-harris/llm_intents)，在「设置 → 设备与服务」中添加并配置它，选择一个网页搜索提供商：
 
 - **Brave Search / Brave LLM Context**：在 Tools for Assist 中填写对应 Brave API Key，并选择网页搜索后端。
+- **Tavily（Tools for Assist 1.11.0 起）**：在 Tools for Assist 中选择 Tavily 并填写 Tavily API Key。桥接可沿用现有搜索动作；可选 `topic/time_range` 通过通用调用传入，见 [兼容核对](docs/TOOLS_FOR_ASSIST_1_11_0.md)。
 - **SearXNG**：在 Tools for Assist 中填写可访问的搜索接口地址，确保服务器允许 `format=json` 查询。
 
 只启用维基百科、YouTube 等其他工具不能代替网页搜索。Tools for Assist 至少启用了相关搜索类工具才会注册 `llm_intents` API；该 API 中还必须实际存在 `search_web`。
@@ -101,7 +104,7 @@ data:
 
 ### 5. 升级和只读工具清单
 
-从 v0.1.0–v0.3.0 升级时，在 HACS 更新桥接并重启 Home Assistant；手动安装则替换桥接自己的集成目录后重启。已有配置项、三个既有动作及搜索 Functions YAML 保持兼容，不需重新添加集成或修改现有设备控制函数。v0.3.0 已保存的白名单和许可保持原值；较早版本没有通用调用选项，`call_tool` 仍默认关闭。就绪检查不会启用或授权任何工具。
+从 v0.1.0–v0.5.0 升级时，在 HACS 更新桥接并重启 Home Assistant；手动安装则替换桥接自己的集成目录后重启。已有配置项、已发布动作及搜索 Functions YAML 保持兼容，不需重新添加集成或修改现有设备控制函数。v0.3.0 已保存的白名单和许可保持原值；较早版本没有通用调用选项，`call_tool` 仍默认关闭。就绪检查不会启用或授权任何工具。
 
 在「开发者工具 → 动作」执行 [examples/list_tools_action.yaml](examples/list_tools_action.yaml)：
 
@@ -112,7 +115,7 @@ data: {}
 
 动作**无入参**且必须接收响应。它通过 HA 公开注册表读取当前可用工具，不执行搜索或任何其他工具。默认白名单仅含 `llm_intents/search_web`；白名单外的 API 不会被实例化。v0.3 启用通用调用后，原始管理员调用者还可发现选项中逐项授权的其他只读工具。其他调用者仍使用默认搜索清单。
 
-上游工具声明 `read_only=true, destructive=false` 时接受其声明；v0.5 对 Tools for Assist 的 9 个查询组合使用固定源码审核依据，具体标识与范围见 [全工具兼容清单](docs/TOOLS_COMPATIBILITY.md)。额外审核依据要求工具公开的 integration 为 `llm_intents`。显式声明具有写入或破坏行为的工具不会出现在清单中，即使已启用副作用许可。审核与新的只读声明都不会自动扩大访问白名单。
+上游工具声明 `read_only=true, destructive=false` 时接受其声明；v0.6 对当前范围内 9 个 Tools for Assist 只读组合（含受限数值计算器）使用固定源码审核依据，具体标识与范围见 [全工具兼容清单](docs/TOOLS_COMPATIBILITY.md)。额外审核依据要求工具公开的 integration 为 `llm_intents`。显式声明具有写入或破坏行为的工具不会出现在清单中，即使已启用副作用许可。审核与新的只读声明都不会自动扩大访问白名单。
 
 如需让 EOAIC2 查询清单，可把 [examples/eoaic2_list_tools.yaml](examples/eoaic2_list_tools.yaml) 中的完整列表项追加到现有 Functions，函数名为 `list_search_tools`。这是可选项，原有 `web_search` 可以独立使用；集成不会自动编辑或注入 EOAIC2 配置。
 
@@ -165,7 +168,7 @@ data: {}
 
 1. 在「API/工具白名单」中填写可信配置中的确切标识，每行一项，例如 `llm_intents/search_web`。最多 32 项，区分大小写，不支持通配符、URL 或模板。
 2. 开启「启用 call_tool」。保存后立即生效；关闭开关或删除某一项会阻止后续调用，无需重载。
-3. 只有确实需要写入、破坏性或没有只读依据的工具时，才开启「允许副作用或无只读依据的工具」。该开关仅适用于白名单内的工具。v0.5 已审核的 9 个 Tools for Assist 查询组合无需开启它；计算器、媒体播放和未知工具仍保守处理。
+3. 只有确实需要写入、破坏性或没有只读依据的工具时，才开启「允许副作用或无只读依据的工具」。该开关仅适用于白名单内的工具。当前已审核查询与受限数值计算器无需开启它；媒体播放和未知工具需要该许可。
 
 **所有 `call_tool` 调用都要求原始 Context 中存在 HA 实际认证存储里的有效管理员用户。** 缺少 `user_id`、普通用户、未知用户或停用账号会返回 `permission_denied`。桥接不会补造管理员或语音设备身份。语音和自动化若没有管理员 Context，不能调用此接口；可继续使用原有 `search_web` 和既有设备控制 Functions。
 
@@ -184,7 +187,7 @@ data:
 
 调用前使用上游工具自己的 **probatio Schema** 校验参数，保留其枚举、类型及其他校验器，授权后才执行默认值工厂，执行一次后传入工具。`llm_intents/search_web` 仍要求去除首尾空白后 1–500 字符的查询，同时允许上游 Schema 支持的可选 `freshness`。参数文本中的 `{{ ... }}` 不会被当作模板再次执行。未授权请求不会取得对应 API 或执行上游参数校验器。
 
-可选把 [examples/eoaic2_call_tool.yaml](examples/eoaic2_call_tool.yaml) 的 `call_allowed_tool` 完整列表项追加到现有 EOAIC2 Functions。该示例同样使用整个 data 字典的模板，保留参数类型和原始 Context；不要覆盖现有函数。只读清单不会列出副作用工具，这些工具的确切标识和参数需由可信上游文档或管理员配置提供。集成不会自动注入所有上游工具。
+可选把 [examples/eoaic2_call_tool.yaml](examples/eoaic2_call_tool.yaml) 的 `call_allowed_tool` 完整列表项追加到现有 EOAIC2 Functions。该示例同样使用整个 data 字典的模板，保留参数类型和原始 Context；不要覆盖现有函数。只读清单不会列出副作用工具；管理员可用 `describe_tool` 查看白名单内播放工具的当前参数，无需先开放其执行许可。集成不会自动注入所有上游工具。
 
 通用响应的结构如下，**不是实时调用结果**：
 
@@ -219,7 +222,7 @@ data:
 
 工具最多执行一次，桥接不自动重试。**副作用工具开始执行后发生超时、异常、业务失败或结果错误，`outcome_unknown=true`，表示实际改变可能已经发生；先核对设备或上游状态，避免重复执行。** 撤销选项不能回滚正在执行或已发生的改变。20 秒超时覆盖异步等待，不能抢占同步参数校验器或保证回滚上游操作。
 
-只读声明是上游提供的能力说明；白名单授权的是受信任的已安装工具代码，不能作为 Python 沙箱。调用保持原始 HA Context，工具仍须遵守其自己的访问控制和数据保护规则。
+只读声明是上游提供的能力说明；白名单授权的是受信任的已安装工具代码，不能作为 Python 沙箱。桥接把原始 HA Context 交给上游工具，工具仍须遵守自身访问控制。Tools for Assist 1.11.0 的播放工具不会继续把 Context 传到 HA 播放服务，下游服务的 user_id 为空；入口管理员及副作用许可检查仍生效，详见 [兼容说明](docs/TOOLS_COMPATIBILITY.md)。
 
 ### 7. v0.4 白名单工具就绪检查
 
@@ -273,11 +276,11 @@ data: {}
 
 如需由 EOAIC2 查询，可选追加 [examples/eoaic2_check_tools.yaml](examples/eoaic2_check_tools.yaml) 中的 `check_enabled_tools`。没有管理员用户身份的语音/自动化仍会被拒绝；原有三个 Functions 示例可继续独立使用。
 
-### 8. v0.5 Tools for Assist 查询工具
+### 8. Tools for Assist 查询工具
 
-在 Tools for Assist 中启用所需工具，再把其确切 API/工具组合加入桥接选项。v0.5 可在副作用许可关闭时发现、检查和调用 9 个已审核查询组合，覆盖网页、地点、路线、维基百科、YouTube、天气、单位换算、日期和实体历史。新增组合仍要求原始有效管理员身份。
+在 Tools for Assist 中启用所需工具，再把其确切 API/工具组合加入桥接选项。可在副作用许可关闭时发现、检查和调用已审核查询组合，覆盖网页、地点、路线、维基百科、YouTube、天气、单位换算和日期；v0.6 另补齐受限数值计算器。所有额外组合仍要求原始有效管理员身份。
 
-完整参数、上游条件及后续待补齐的工具见 [docs/TOOLS_COMPATIBILITY.md](docs/TOOLS_COMPATIBILITY.md)。当前已注册的 API/工具才会出现在清单；只有工具类型就绪不能保证后端配置有效。新增查询动作示例见 [examples/query_tools_actions.yaml](examples/query_tools_actions.yaml)。例如授权 `basic_utilities/unit_convert` 后：
+完整参数、上游条件及真实验收门槛见 [docs/TOOLS_COMPATIBILITY.md](docs/TOOLS_COMPATIBILITY.md)。当前已注册的 API/工具才会出现在清单；只有工具类型就绪不能保证后端配置有效。新增查询动作示例见 [examples/query_tools_actions.yaml](examples/query_tools_actions.yaml)。例如授权 `basic_utilities/unit_convert` 后：
 
 ```yaml
 action: eoai_tools_bridge.call_tool
@@ -291,6 +294,38 @@ data:
 ```
 
 EOAIC2 可继续通过第 5、6 节的清单与 `call_allowed_tool` 示例使用这些工具。桥接保留原生参数类型、可选默认值和响应数据，不复制上游工具实现；工具是否自动被模型选中需在实际对话中验收。
+
+
+### 9. v0.6 单工具参数描述、计算器和播放
+
+先在桥接选项启用 `call_tool` 并填写确切白名单。管理员可使用新增的 [describe_tool](examples/describe_tool_action.yaml) 查看一个工具的当前原生参数：
+
+```yaml
+action: eoai_tools_bridge.describe_tool
+data:
+  api_id: media_services
+  tool_name: play_video
+```
+
+动作只接受 `api_id/tool_name`，必须接收响应；没有 `tool_args`。它可在副作用许可关闭时查看播放参数，不执行工具、参数校验器或默认工厂，不授予执行权限。响应含 `tool.parameters`、`read_only_basis`、`requires_side_effects` 和 `side_effects_allowed`。`list_tools` 继续只读，`check_tools` 继续完全不执行参数逻辑；描述动作的 Schema 转换可能调用原生序列化器，与就绪检查的边界不同。
+
+描述采用目录相同的严格 Schema、文字和 16 KiB 预算，10 秒异步超时；身份、选项、工具对象或 Schema 变化时丢弃结果。失败时 `tool=null`，错误使用固定消息。沿用 `call_tool` 的加载、授权、API 和权限变化错误，另有 `invalid_metadata/invalid_schema/tool_changed/timeout`；不返回部分描述。可选追加 [EOAIC2 describe_allowed_tool](examples/eoaic2_describe_tool.yaml)，把原始响应送回 `_function_result`。
+
+计算器加入 `basic_utilities/calculate` 后无需开启副作用许可，见 [计算动作](examples/calculator_action.yaml)：
+
+```yaml
+action: eoai_tools_bridge.call_tool
+data:
+  api_id: basic_utilities
+  tool_name: calculate
+  tool_args:
+    operation: expression
+    data: ["12.5*2+3"]
+```
+
+支持原版 `expression/min/max/avg` 的有限数值输入。表达式最多 256 字符、64 个 AST 节点、8 层，聚合最多 32 项；仅允许指定运算、函数和常量，数字/中间估算范围及幂指数也有限制。目录和参数描述通过 `bridge_constraints` 返回限制，详见 [计算器边界](docs/TOOLS_COMPATIBILITY.md#计算器边界)。超出限制返回 `invalid_args`，不调用原版工具；实际结果由 Tools for Assist 的原版计算器生成。上游同步计算仍须正常返回，异步超时不能强制抢占。
+
+播放加入 `media_services/play_video`，还需独立副作用许可、上游启用 YouTube，以及适用的 HA 视频播放器。先重新读取动态 `entity_id` 枚举，再按 [播放动作](examples/play_video_action.yaml) 传入 `video_url` 和实体数组，或原版支持的区域/设备标识。桥接不自动重试；发生 `outcome_unknown=true` 时先核对设备状态。设备控制、脚本和计时器继续由 EOAIC2 原生 HA 控制处理。
 
 ## 固定搜索动作契约和错误处理
 
@@ -324,7 +359,7 @@ EOAIC2 可继续通过第 5、6 节的清单与 `call_allowed_tool` 示例使用
 
 最多返回 **5 条结果**，标题最多 **200 字符**，每条正文最多 **1600 字符**，来源 URL 最多 **1024 字符**，完整响应的 UTF-8 JSON 最多 **16 KiB**。超过限制的文字以 `…` 标记；超过总预算或条数的后续结果被省略，`truncated=true`。
 
-正文支持字符串、Brave 的摘要字符串列表，以及 Brave LLM Context 的 JSON 对象摘要；列表合并为文本，JSON 对象序列化为文字。顶层和结果项的 `instruction`、API prompt、未知元数据均不作为模型指令转发。桥接保留上游实际返回的 HTTP(S) `url` 或 `link`，不抓取地址；异常、含认证信息或过长的链接被省略，不截断或猜测链接。**所核对的 Brave、Brave LLM Context、SearXNG 工具当前均未在结果中返回 URL，因此实际回答可能无法提供来源链接。**
+正文支持字符串、Brave 的摘要字符串列表，以及 Brave LLM Context 的 JSON 对象摘要；列表合并为文本，JSON 对象序列化为文字。顶层和结果项的 `instruction`、API prompt、未知元数据均不作为模型指令转发。桥接保留上游实际返回的 HTTP(S) `url` 或 `link`，不抓取地址；异常、含认证信息或过长的链接被省略，不截断或猜测链接。**所核对的 Brave、Brave LLM Context、SearXNG、Tavily 工具当前均未在结果中返回 URL，因此实际回答可能无法提供来源链接。**
 
 ## 生命周期、权限和日志
 
@@ -358,9 +393,9 @@ uv run --no-sync ruff format --check custom_components tests scripts
 uv run --no-sync python scripts/build_release.py
 ```
 
-首次获取依赖和上游测试文件需要联网。pytest 阶段禁止网络访问。两个下载脚本分别在 `.cache/upstream/eoaic2/` 和 `.cache/upstream/llm_intents/` 缓存固定提交的 4 个和 20 个文件并核对 SHA-256，生产集成不依赖它们，也不把它们打包。缺少 Tools for Assist 缓存会使对应契约测试失败并提示获取源码；旧 EOAIC2 测试保留缺失缓存时的跳过提示。完整 CI 获取两套源码，要求 0 skipped；仅运行本地桥接测试可使用 `pytest -m 'not upstream and not tools_upstream'`。
+首次获取依赖和上游测试文件需要联网。pytest 阶段禁止网络访问。两个下载脚本缓存固定提交的 EOAIC2 4 个文件、Tools for Assist 原基线 20 个文件，以及独立的 1.11.0 快照 22 个文件（`.cache/upstream/llm_intents-1.11.0/`），并核对 SHA-256，生产集成不依赖它们，也不把它们打包。缺少 Tools for Assist 缓存会使对应契约测试失败并提示获取源码；旧 EOAIC2 测试保留缺失缓存时的跳过提示。完整 CI 获取两套源码，要求 0 skipped；仅运行本地桥接测试可使用 `pytest -m 'not upstream and not tools_upstream'`。
 
-自动测试使用真实 HA 配置流、选项流、认证用户、服务注册/校验、Context、LLM APIInstance、Schema 转换和 Script。契约测试执行未修改的 EOAIC2 `ScriptFunction` 与 Tools for Assist 查询工具/Schema，单位换算和日期执行原版代码；网络、天气、历史数据及副作用使用模拟后端。这些测试**不代表**真实搜索后端、实际对话模型、Assist/TTS、HACS 安装或生产重启已验收。v0.1.0–v0.4.0 实际验收由用户报告通过；v0.5.0 另行验收。
+自动测试使用真实 HA 配置流、选项流、认证用户、服务注册/校验、Context、LLM APIInstance、Schema 转换和 Script。契约测试执行未修改的 EOAIC2 `ScriptFunction` 与 Tools for Assist 工具/Schema/API，单位换算、日期和 SymPy 计算执行原版代码；网络、天气、历史数据及播放服务使用模拟后端。开发依赖新增 SymPy 仅供原版计算器测试，生产桥接无新增 pip 依赖。这些测试**不代表**真实搜索后端、实际对话模型、Assist/TTS、HACS 安装或生产重启已验收。v0.1.0–v0.4.0 实际验收由用户报告通过；v0.5.0、v0.6.0 和 1.11.0 组合仍待实际验收。
 
 实际执行结果与待完成的手工验收见 [docs/TESTING.md](docs/TESTING.md)，源码核对记录见 [docs/UPSTREAM.md](docs/UPSTREAM.md)。GitHub CI 运行同一套测试、Ruff、Hassfest 和 HACS 仓库校验。
 
@@ -375,6 +410,8 @@ custom_components/eoai_tools_bridge/
   schema.py          不执行默认工厂的原生参数元数据视图
   gateway.py         原始管理员校验、原生参数验证、单次受控调度
   readiness.py       白名单状态检查，不执行工具或参数逻辑
+  describe.py        单个已授权工具的参数描述，可先查看播放参数
+  calculator.py      调用原版计算器前的有限数值参数校验
   policy.py          明确白名单、只读依据及权限快照
   payload.py         JSON 参数限制与通用结果规范化
   const.py           公共名称、限制和固定错误消息
@@ -391,6 +428,6 @@ docs/                兼容记录与验收清单
 .github/workflows/   持续集成
 ```
 
-v0.1 MVP 提供搜索；v0.2 新增只读清单；v0.3 新增明确白名单下的受控 `call_tool`；v0.4 补充管理员就绪检查；v0.5 补齐已审核查询工具及普通可选默认值的兼容。当前版本不自动注入 EOAIC2 Functions，不自行实现其他 LLM 工具、搜索提供商、重复缓存、历史数据库或额外聊天 UI。模型是否主动选用工具仍由 EOAIC2 的提示词和模型能力决定。
+v0.1 MVP 提供搜索；v0.2 新增只读清单；v0.3 新增明确白名单下的受控 `call_tool`；v0.4 补充管理员就绪检查；v0.5 补齐已审核查询工具及普通可选默认值的兼容；v0.6 新增单工具参数描述、受限数值计算器及原版媒体 API 契约。当前版本不自动注入 EOAIC2 Functions，不自行实现其他 LLM 工具、搜索提供商、重复缓存、历史数据库或额外聊天 UI。模型是否主动选用工具仍由 EOAIC2 的提示词和模型能力决定。
 
-后续继续按 0.x 小版本迭代，**Tools for Assist 的全部工具家族兼容并实际验收完成前，不发布 1.0**。计算器、媒体播放、Home Control 的动态控制/脚本与设备相关计时器均已纳入 [完整清单和版本门槛](docs/TOOLS_COMPATIBILITY.md)，不能只以网页搜索或固定工具名计数宣称全兼容。当前只声明 HA 2026.10.x 的目标兼容性，其他版本需要重新测试。版本变更见 [docs/CHANGELOG.md](docs/CHANGELOG.md)。
+后续继续按 0.x 小版本迭代，**当前范围内的非 Home Control 工具兼容并实际验收完成前，不发布 1.0**。四个 API、10 个固定工具及 13 个实现的源码/契约证据与真实验收门槛见 [兼容清单](docs/TOOLS_COMPATIBILITY.md)。v0.5 的历史工具分类和既有手工白名单保留兼容；Home Control 不再列入新功能或 1.0 门槛。当前只声明 HA 2026.10.x 的目标兼容性，其他版本需要重新测试。版本变更见 [docs/CHANGELOG.md](docs/CHANGELOG.md)。

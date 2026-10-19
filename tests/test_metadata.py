@@ -12,6 +12,7 @@ from custom_components.eoai_tools_bridge.const import (
     DOMAIN,
     SERVICE_CALL_TOOL,
     SERVICE_CHECK_TOOLS,
+    SERVICE_DESCRIBE_TOOL,
     SERVICE_LIST_TOOLS,
     SERVICE_SEARCH_WEB,
 )
@@ -51,6 +52,12 @@ async def test_runtime_action_description(hass, bridge_entry):
     key = f"component.{DOMAIN}.services.{SERVICE_CHECK_TOOLS}"
     assert english[f"{key}.name"] == "Check tool readiness"
     assert chinese[f"{key}.name"] == "检查工具就绪状态"
+    descriptor = descriptions[DOMAIN][SERVICE_DESCRIBE_TOOL]
+    assert descriptor["response"] == {"optional": False}
+    assert set(descriptor["fields"]) == {"api_id", "tool_name"}
+    key = f"component.{DOMAIN}.services.{SERVICE_DESCRIBE_TOOL}"
+    assert english[f"{key}.name"] == "Describe an allowed tool"
+    assert chinese[f"{key}.name"] == "查看白名单工具参数"
 
 
 def test_documented_yaml_matches_delivered_example():

@@ -56,13 +56,3 @@
     tool_args:
       range: tomorrow
   response_variable: weather
-- action: eoai_tools_bridge.call_tool
-  data:
-    api_id: HomeControl
-    tool_name: get_device_history_context
-    tool_args:
-      name: "厨房温度"
-      domain: sensor
-      start_date_time: "2026-10-09 08:00"
-      end_date_time: "2026-10-09 09:00"
-  response_variable: device_history

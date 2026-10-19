@@ -11,6 +11,9 @@
     },
     "check_tools": {
       "service": "mdi:clipboard-check-outline"
+    },
+    "describe_tool": {
+      "service": "mdi:file-document-outline"
     }
   }
 }

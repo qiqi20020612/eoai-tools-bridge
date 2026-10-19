@@ -50,18 +50,40 @@ FILES = {
     "youtube.py": "c4578f94ba0ac1473f330c0f366b3a52a33afc44d31a03f7c2c0a80401e83417",
 }
 
+RELEASE_COMMIT = "198e37885fe06e6452d2d6e26bc5e532b1686acc"
+RELEASE_DESTINATION = DESTINATION.with_name("llm_intents-1.11.0")
+RELEASE_FILES = {
+    **FILES,
+    "const.py": "908380a403c7a20e34053592fc514c87fa983de73a17c00687dd19482753490f",
+    "llm_functions.py": (
+        "3566d90b1d8961aa60431fbd4913f945cdffe167a56d07e5a36fd8dfc1b678ba"
+    ),
+    "tavily_search.py": (
+        "a7a0d233360139f54fcfda520120f592b755e03afed82831de6f4b31cb44a0f3"
+    ),
+    "manifest.json": "3dc624a46e0f36e377161c053c9a1ebf951966c0390638a1214678ee791c2559",
+}
 
-def main() -> None:
-    """Fetch test copies only; never install or alter an upstream integration."""
-    for name, expected in FILES.items():
-        destination = DESTINATION / name
+
+def fetch_snapshot(commit: str, files: dict[str, str], root: Path) -> None:
+    """Preserve each snapshot and reuse only byte-identical, verified files."""
+    for name, expected in files.items():
+        destination = root / name
         if destination.exists():
             data = destination.read_bytes()
             if hashlib.sha256(data).hexdigest() == expected:
-                print(f"Verified cached Tools for Assist {name}")
+                print(f"Verified cached {root.name}/{name}")
+                continue
+        baseline = DESTINATION / name
+        if root != DESTINATION and baseline.exists():
+            data = baseline.read_bytes()
+            if hashlib.sha256(data).hexdigest() == expected:
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(data)
+                print(f"Verified and reused {root.name}/{name}")
                 continue
         url = (
-            f"https://raw.githubusercontent.com/{REPOSITORY}/{COMMIT}/"
+            f"https://raw.githubusercontent.com/{REPOSITORY}/{commit}/"
             f"custom_components/llm_intents/{name}"
         )
         with urlopen(url, timeout=30) as response:
@@ -71,6 +93,12 @@ def main() -> None:
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(data)
         print(f"Fetched and verified Tools for Assist {name}")
+
+
+def main() -> None:
+    """Fetch test copies only; never install or alter an upstream integration."""
+    fetch_snapshot(COMMIT, FILES, DESTINATION)
+    fetch_snapshot(RELEASE_COMMIT, RELEASE_FILES, RELEASE_DESTINATION)
 
 
 if __name__ == "__main__":

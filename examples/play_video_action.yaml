@@ -1,0 +1,10 @@
+# Enable media_services/play_video and side effects, then replace the entity_id
+# with an exact current value returned by describe_tool. This starts playback.
+action: eoai_tools_bridge.call_tool
+data:
+  api_id: media_services
+  tool_name: play_video
+  tool_args:
+    video_url: "https://www.youtube.com/watch?v=VIDEO_ID"
+    entity_id:
+      - media_player.living_room_tv

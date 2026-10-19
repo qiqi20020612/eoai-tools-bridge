@@ -10,6 +10,7 @@ import probatio as vol
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import llm
 
+from .calculator import calculator_constraints, is_calculator
 from .const import (
     CATALOG_ALLOWLIST,
     CATALOG_ERROR_MESSAGES,
@@ -83,7 +84,7 @@ def catalog_response(code: str | None = None) -> dict[str, Any]:
     }
 
 
-def _metadata_text(value: Any, limit: int) -> tuple[str | None, bool]:
+def metadata_text(value: Any, limit: int) -> tuple[str | None, bool]:
     """Bound display metadata without coercing arbitrary objects to strings."""
     if value is None:
         return None, False
@@ -232,9 +233,9 @@ async def async_list_tools(hass: HomeAssistant, call: ServiceCall) -> dict[str, 
                     basis = read_only_basis(api.id, tool)
                     if basis is None:
                         continue
-                    api_name, api_cut = _metadata_text(api.name, MAX_TITLE_LENGTH)
-                    title, title_cut = _metadata_text(tool.title, MAX_TITLE_LENGTH)
-                    description, description_cut = _metadata_text(
+                    api_name, api_cut = metadata_text(api.name, MAX_TITLE_LENGTH)
+                    title, title_cut = metadata_text(tool.title, MAX_TITLE_LENGTH)
+                    description, description_cut = metadata_text(
                         tool.description, MAX_CATALOG_DESCRIPTION_LENGTH
                     )
                     stage = "invalid_schema"
@@ -251,6 +252,10 @@ async def async_list_tools(hass: HomeAssistant, call: ServiceCall) -> dict[str, 
                             "read_only_basis": basis,
                         }
                     )
+                    if is_calculator(api.id, tool):
+                        response["tools"][-1]["bridge_constraints"] = (
+                            calculator_constraints()
+                        )
                     response["truncated"] |= api_cut or title_cut or description_cut
                     if (
                         len(json.dumps(response, ensure_ascii=False).encode("utf-8"))

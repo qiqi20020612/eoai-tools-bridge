@@ -1,39 +1,33 @@
-# Tools for Assist 全工具兼容清单
+# Tools for Assist 工具兼容清单
 
-核对日期：**2026-10-10（Asia/Shanghai）**。用户要求继续 0.x 小版本迭代，并在 1.0 之前兼容 Tools for Assist 支持的所有工具。**全部工具家族的兼容与实际验收完成前，不发布 1.0。** 当前交付 v0.5.0，后续版本逐项关闭本文件中的缺口。
+核对日期：**2026-10-19（Asia/Shanghai）**。当前版本 **v0.6.0**，继续 0.x 小版本迭代。用户本次明确取消 Home Control API：EOAIC2 已有原生 HA 控制，因此 Home Control 的状态/历史、动态控制、脚本、设备上下文和计时器均从本项目后续开发与 1.0 门槛中移除。既有 EOAIC2 设备控制 Functions 继续使用原来的路径。
 
-源码基准为 [Tools for Assist 的固定提交](https://github.com/skye-harris/llm_intents/tree/100e740b93a2a1a6d304329883937193a4571ac0/custom_components/llm_intents)，SHA `100e740b93a2a1a6d304329883937193a4571ac0`；2026-10-10 复核时为 master 当前提交。HA 基准为 2026.10.0，SHA `6a811d3359c7b2076dc9e1cf900843a129c044af`。升级上游后必须重新核对清单、参数和动态工具，不能把固定快照的检查当成未来版本保证。
+源码基准为 [Tools for Assist 1.11.0](https://github.com/skye-harris/llm_intents/tree/198e37885fe06e6452d2d6e26bc5e532b1686acc/custom_components/llm_intents)，提交 `198e37885fe06e6452d2d6e26bc5e532b1686acc`；保留原基线 `100e740b93a2a1a6d304329883937193a4571ac0` 回归。HA 基准为 2026.10.0，提交 `6a811d3359c7b2076dc9e1cf900843a129c044af`。上游更新后重新核对入口、参数及实现，固定快照不保证未来版本兼容。Tavily 的增量核对见 [1.11.0 记录](TOOLS_FOR_ASSIST_1_11_0.md)。
 
-## 完整范围
+## 当前范围与证据
 
-[llm_functions.py](https://github.com/skye-harris/llm_intents/blob/100e740b93a2a1a6d304329883937193a4571ac0/custom_components/llm_intents/llm_functions.py) 与 [home_control.py](https://github.com/skye-harris/llm_intents/blob/100e740b93a2a1a6d304329883937193a4571ac0/custom_components/llm_intents/home_control.py) 合计定义 **11 个固定工具名、13 个实现**（网页搜索的三个提供商共用一个工具名），另加 Home Control 从 HA Assist 平台聚合的动态工具。API 标识区分大小写，`HomeControl` 不等于 `home_control`。
+原版 [llm_functions.py](https://github.com/skye-harris/llm_intents/blob/198e37885fe06e6452d2d6e26bc5e532b1686acc/custom_components/llm_intents/llm_functions.py) 中的四个非 Home Control API 为 `llm_intents`、`weather_forecast`、`basic_utilities`、`media_services`，合计 **10 个固定工具名、13 个实现**；四个搜索提供商共用 `search_web`。v0.6 在隔离测试中实例化这四个原版 API，核对其全部启用工具与此清单一致。原版参数、工具方法或 API 的模拟契约通过不代表真实后端或设备验收通过。
 
-| API / 工具 | 参数要点 | v0.5.0 开发验证 | 实际运行 |
+| API / 工具 | 参数与条件 | v0.6 开发验证 | 真实验收 |
 | --- | --- | --- | --- |
-| `llm_intents/search_web` | `query`；Brave LLM Context 另有可选 `freshness` 枚举；Brave、Brave LLM Context、SearXNG 三个实现 | 原有固定搜索接口保留；三个原版 Schema、只读目录、检查和调用契约通过 | 旧版搜索总体验收已由用户报告通过；未取得提供商逐项证据 |
-| `llm_intents/find_places` | `query` | 原版 Schema、目录、检查、模拟 HTTP 调用通过；保留地点字段 | v0.5 待实际验收 |
-| `llm_intents/get_route` | `destination`，可选 `departure_time`、`mode` 枚举 | 原版 Schema、目录、检查、模拟路线 HTTP 调用通过；保留距离与耗时 | v0.5 待实际验收 |
-| `llm_intents/search_wikipedia` | `query` | 原版 Schema、目录、检查、模拟搜索及摘要 HTTP 调用通过 | v0.5 待实际验收 |
-| `llm_intents/search_youtube` | `query`，可选 `num_results` 默认 1、范围 1–25 | 原版 Schema、目录、检查、模拟 HTTP 调用通过；默认值仅在授权调用时求值 | v0.5 待实际验收 |
-| `weather_forecast/get_weather_forecast` | `range`：`week`、`today`、`tomorrow` 或星期枚举 | 原版 Schema、目录、检查、模拟天气数据调用通过；支持上游文本结果 | v0.5 待实际验收 |
-| `basic_utilities/unit_convert` | 字符串 `amount`、`from_unit`、`to_unit`；支持分数 | 原版 Schema、目录、检查和换算代码通过；原版 EOAIC2 脚本接线通过 | v0.5 待实际验收 |
-| `basic_utilities/calendar_day_info` | 整数 `day`、`month`，可选 `year` | 原版 Schema、目录、检查和日期代码通过；原版 EOAIC2 脚本接线通过 | v0.5 待实际验收 |
-| `HomeControl/get_device_history_context` | `name`、`domain`、起止日期时间，可选 `area` | 原版 Schema、目录、检查和模拟 Recorder 调用通过；保留统计及状态采样 | v0.5 待实际验收 |
-| `basic_utilities/calculate` | `operation` 选择器：`expression/min/max/avg`；`data` 字符串数组 | 已盘点；现有通用传输保留，但原版计算器与参数发现的完整契约待后续版本；未加入审核只读集合 | 后续 0.x 验收 |
-| `media_services/play_video` | `video_url`，可选动态 `entity_id` 数组、`area`、`device_id` | 已盘点；现有副作用许可保留，动态选择器、原版媒体调度和参数发现待后续版本 | 后续 0.x 验收 |
-| `HomeControl/homeassistant__GetLiveContext` | 按原生 HA 的当前 Schema | 已盘点；原版 Home Control API 聚合与状态读取待后续版本 | 后续 0.x 验收 |
-| `HomeControl/intent__Hass…`、各域原生工具 | 如开关、位置、灯光、媒体等；工具名及参数随加载的平台和暴露实体变化 | 已盘点；动态注册、上游禁用列表、参数转换、原生权限及副作用失败语义待后续版本 | 后续 0.x 验收 |
-| `HomeControl/script__<脚本名>` | 当前被暴露脚本的字段/选择器 | 已盘点；动态脚本字段、默认值、调用及响应待后续版本 | 后续 0.x 验收 |
-| `HomeControl/intent__Hass…Timer…` | 计时器参数与可信设备上下文 | 已盘点；当前桥接的 LLMContext `device_id=None`，无法取得依赖设备的完整工具集合，须在后续 0.x 补齐 | 后续 0.x 验收 |
-| `HomeControl/<其他平台>__<工具名>` | 其他加载的 HA LLM 平台提供的当前 Schema | Home Control 会聚合所有已加载的 Assist 工具平台；必须在实际环境枚举，不能仅核对上述常见名称 | 后续 0.x 验收 |
+| `llm_intents/search_web` | `query`；Brave LLM Context 可选 `freshness`，Tavily 可选 `topic/time_range`；另含 Brave、SearXNG | 四个实现的原版参数和模拟调用；固定搜索、目录、就绪及通用调用回归 | 旧版搜索总体验收由用户报告通过；提供商逐项及 1.11.0 组合待确认 |
+| `llm_intents/find_places` | `query`；上游地点后端配置 | 原版参数、目录、就绪和模拟 HTTP 调用 | 待逐项实际验收 |
+| `llm_intents/get_route` | `destination`，可选 `departure_time/mode`；上游起点与路线配置 | 原版参数及模拟 HTTP 调用；保留距离、耗时和嵌套结果 | 待逐项实际验收 |
+| `llm_intents/search_wikipedia` | `query` | 原版搜索与摘要方法，HTTP 模拟 | 待逐项实际验收 |
+| `llm_intents/search_youtube` | `query`，可选 `num_results` 默认 1、范围 1–25；上游密钥 | 原版 Schema 默认值/范围及模拟 HTTP 调用 | 待逐项实际验收 |
+| `weather_forecast/get_weather_forecast` | `range` 枚举；配置上游天气实体 | 原版参数与方法、模拟天气数据、文本响应 | 待逐项实际验收 |
+| `basic_utilities/unit_convert` | 字符串 `amount/from_unit/to_unit`，支持分数 | 原版参数和计算代码、原版 EOAIC2 脚本接线 | 待逐项实际验收 |
+| `basic_utilities/calendar_day_info` | 整数 `day/month`，可选 `year` | 原版参数和日期代码、原版 EOAIC2 脚本接线 | 待逐项实际验收 |
+| `basic_utilities/calculate` | `operation=expression/min/max/avg`，字符串数组 `data`；遵守下述数值边界 | 原版 BasicUtilitiesAPI、选择器和 SymPy 计算；表达式拒绝边界、目录、描述、检查及 EOAIC2 脚本 | 待实际计算与对话验收 |
+| `media_services/play_video` | `video_url`，可选动态 `entity_id` 数组、`area/device_id`；上游启用 YouTube、HA 中有适用播放器 | 原版 MediaAPI、动态实体选择器、显式实体/区域/设备及单设备回退；调用模拟 HA 播放服务；错误、超时不重试；EOAIC2 脚本 | 待物理播放器与对话验收 |
 
-HA 动态工具来源见 [LLM 平台聚合](https://github.com/home-assistant/core/blob/6a811d3359c7b2076dc9e1cf900843a129c044af/homeassistant/components/llm/__init__.py)、[原生意图与计时器](https://github.com/home-assistant/core/blob/6a811d3359c7b2076dc9e1cf900843a129c044af/homeassistant/components/intent/llm.py)、[脚本工具](https://github.com/home-assistant/core/blob/6a811d3359c7b2076dc9e1cf900843a129c044af/homeassistant/components/script/llm.py) 及 [实时状态工具](https://github.com/home-assistant/core/blob/6a811d3359c7b2076dc9e1cf900843a129c044af/homeassistant/components/homeassistant/llm.py)。其数量随安装环境变化，不能宣称一个固定工具数量就是“全部支持”。
+播放是本次明确保留的 Tools for Assist 媒体工具；HA 原生设备控制、脚本及计时器由 EOAIC2 承担。上游 PlayVideoTool 会接收桥接传入的原始管理员 `LLMContext`，但它调用 `media_player.play_media` 时**没有继续传入 Context**，因此下游服务 Context 的 `user_id` 为空。桥接仍执行入口管理员、精确白名单及副作用许可检查；不据此宣称用户身份贯穿下游服务，也不修改上游或 HA Core 来改变该行为。真实环境需确认此行为符合自身使用条件。
 
-## v0.5.0 使用方式
+## 配置与发现
 
-Tools for Assist 仍负责启用工具、配置密钥、天气实体、路线起点、Recorder 和实体暴露。桥接只使用 HA 公开的 LLM 注册/调度接口；原版测试副本仅保存在开发缓存中，不导入生产集成、不安装、不修改上游文件。
+Tools for Assist 管理工具启用、密钥、天气、路线起点及播放器条件。桥接生产代码只通过 HA 公开 LLM 注册/调度接口访问它，不导入或复制其内部实现；原版测试副本只在开发缓存中加载。
 
-在桥接选项中逐项添加需要的工具并启用 `call_tool`。下面是本版本已审核的 **9 个只读 API/工具组合**，可按需复制；不会自动加入选项：
+按需把下列确切组合加入桥接白名单并启用 `call_tool`。**9 个当前范围内的只读组合**如下；不会自动添加配置，默认清单仍只开放搜索：
 
 ```text
 llm_intents/search_web
@@ -44,29 +38,43 @@ llm_intents/search_youtube
 weather_forecast/get_weather_forecast
 basic_utilities/unit_convert
 basic_utilities/calendar_day_info
-HomeControl/get_device_history_context
+basic_utilities/calculate
 ```
 
-这些工具在上游仍使用默认注释；桥接依据固定源码审核并返回 `read_only_basis=audited_allowlist`。额外工具必须同时满足精确白名单、通用调用开启和原始有效管理员身份，因此可在副作用许可关闭时发现、检查和调用。审核判断不会覆盖上游显式声明的非只读或破坏性行为，也不适用于其他集成冒用相同标识。默认清单仍只开放旧的网页搜索组合。
+管理员可在副作用许可关闭时使用这些组合。审核依据要求公开 `integration=llm_intents`，返回 `read_only_basis=audited_allowlist`，且不覆盖上游明确的危险声明。原始有效管理员、精确白名单和通用调用开关始终分别检查。
 
-`calculate` 调用 SymPy 的 `sympify` 处理表达式，桥接尚未完成其表达式边界验证，继续按没有只读依据的工具处理；媒体播放和未知动态工具继续遵守独立副作用许可。工具在白名单内并不代表 Python 代码已被隔离。后续版本要完成这些工具的完整发现、参数与调用契约，不能通过批量把未知工具标为只读实现“全兼容”。
+播放另行加入 `media_services/play_video`，执行还须开启独立副作用许可。先调用 `describe_tool` 查看其当前动态实体枚举和参数；读取描述不要求开启副作用许可，不执行工具或默认工厂，也不授予权限。`list_tools` 仍只返回只读工具，`check_tools` 仍只检查状态和 Schema 类型，完全不执行工具、参数 Schema、默认工厂或序列化钩子。参数描述转换可能调用原生序列化器，不能与就绪检查混为一谈。
 
-管理员先调用 `check_tools`，再用 `list_tools` 查看当前可发现工具及原生参数，然后调用 `call_tool`。示例见 [query_tools_actions.yaml](../examples/query_tools_actions.yaml)。EOAIC2 继续使用已有的 [call_allowed_tool](../examples/eoaic2_call_tool.yaml) 和 [list_search_tools](../examples/eoaic2_list_tools.yaml) 示例；后者名称为历史名称，但能返回当前管理员明确启用的全部只读工具。
+`describe_tool` 一次返回一个已授权工具的元数据，因此可查看播放参数而无需把副作用工具加入只读目录。参数仍是当前快照；设备、工具或配置变化后重新获取。授权调用使用未修改的原生 Schema 应用默认值和校验约束，桥接最多调度一次。播放失败或超时可能已经改变设备，响应中的 `outcome_unknown=true` 要求先核对实际状态。
 
-目录支持普通 `Optional` 的默认值，通过有预算的元数据视图省略默认值，不调用工厂、不重新编译校验器、不修改原版 Schema。原生授权调用仍由上游 Schema 应用默认值及范围约束。会影响必填/分组约束的默认值或无法准确表达的 Schema 仍返回 `invalid_schema`，不能放宽约束。`check_tools` 的不执行参数逻辑承诺保持不变。
+示例：[查询](../examples/query_tools_actions.yaml)、[参数描述](../examples/describe_tool_action.yaml)、[计算器](../examples/calculator_action.yaml)、[播放](../examples/play_video_action.yaml)、[EOAIC2 参数描述](../examples/eoaic2_describe_tool.yaml)；调用沿用 [call_allowed_tool](../examples/eoaic2_call_tool.yaml)。所有 HA 脚本调用须接收响应。
 
-## 后续 0.x 迭代与 1.0 门槛
+## 计算器边界
 
-- **v0.6 目标：**补齐计算器、媒体播放、Home Control 状态/控制/脚本的可信参数发现与原版调用契约，保留单独副作用许可及不自动重试；覆盖动态实体选择器、脚本默认值和上游禁用工具。
-- **v0.7 目标：**补齐可信设备上下文、设备相关计时器和动态平台工具，验证实际运行时的完整工具集合；检查当前 32 项白名单与 16 KiB 目录预算是否限制完整配置，并提供适当容量/发现方式。
-- **后续 0.x：**修复逐项实际验收发现的问题，复核最新上游工具变化；通过门槛后再确定 1.0 日期，必要时继续发布更多小版本。
+上游使用 SymPy `sympify`，其官方文档说明内部使用 `eval`。v0.6 在调用原版工具前，用标准库 AST 和有限数值运算校验输入；估算值丢弃，实际结果仍由原版工具生成。桥接不接受任意 SymPy/Python 表达式：
 
-1.0 发布前必须全部完成：
+- `data` 为 1–32 个字符串；`expression` 必须恰好一个，最多 256 字符、64 个 AST 节点、8 层深度。
+- 仅有限实数、常量 `pi/E`、运算 `+ - * / // % ** ^` 及函数 `sqrt/sin/cos/tan/exp/log/Abs/abs/floor/ceiling/Min/Max`；函数仅接受位置参数。拒绝属性、索引、字符串、任意名称或代码。
+- 数字及中间估算绝对值最多 `1e100`，非零值至少 `1e-100`，幂指数绝对值最多 32；非法运算、非有限结果和可检测的下溢拒绝。
+- `min/max/avg` 每个数值字符串最多 64 字符，使用相同有限数值边界。
 
-- [ ] 固定工具及所有实际启用的 Home Control 动态工具均可安全获得确切标识、原生参数和调用结果；没有“传输大致可用”但缺少参数发现的工具家族。
-- [ ] 所有工具家族有原版参数/调用契约测试，并覆盖认证、白名单、副作用、默认值/选择器、取消、超时、输出边界与上游失败；CI 无遗漏或跳过。
-- [ ] 真实 HA 中逐项确认 Tools for Assist 实际启用的工具，并记录版本、启用范围及参数/响应证据；查询、计算器、播放、设备控制、脚本、计时器等家族分别验收。
-- [ ] EOAIC2 原始 Context 与 `_function_result` 接线、模型选择工具、现有设备控制 Functions、HACS/Release 升级经过实际验收。
-- [ ] 上游已支持但因设备上下文、参数转换、白名单容量或结果类型而无法使用的工具为零；只有用户明确没有启用或没有后端条件的工具可以记录为环境缺项。
+限制作为 `bridge_constraints` 随计算器目录项及单工具描述返回；超出限制时返回 `invalid_args`，不调度计算器。受信任的同步上游代码仍须正常返回，20 秒异步超时不能强制中断同步计算；这些限制不构成 Python 沙箱或 CPU 隔离。
 
-开发模拟和契约测试不等于真实联网、设备、Assist/TTS 或安装验收；版本总体验收声明也不用于补写未提供的逐工具证据。各版本结果见 [TESTING.md](TESTING.md)。
+## Home Control 的既有兼容
+
+v0.5 曾提供 `HomeControl/get_device_history_context` 的审核分类。为保持已有手工配置可用，v0.6 保留该旧分类及通用网关行为，不自动删除已保存白名单。它属于历史兼容，不再列入当前支持范围、示例或后续验收门槛。不会新增 Home Control API 聚合、动态控制/脚本、设备上下文或计时器实现；旧版本测试及发布记录保留供追溯。
+
+## 剩余 0.x 工作与 1.0 门槛
+
+v0.6 已为当前非 Home Control 工具家族补齐原版参数/调用契约与媒体参数发现。后续继续小版本迭代，优先处理真实验收问题，并在上游变化时更新固定源码和清单；尚不发布 1.0。
+
+1.0 前仍需完成：
+
+- [ ] 在真实 HA 中记录 1.11.0 或后续复核版本实际启用的四个 API、工具清单、参数和响应；查询、计算器、媒体分别验收，注明缺少的后端条件，不把类型就绪当作实际成功。
+- [ ] 实际验证四种搜索后端及可选筛选参数，地点、路线、维基百科、YouTube、天气、单位换算和日期；接受计算器数值限制，验证原版结果及拒绝行为。
+- [ ] 用适用物理播放器验证实体/区域/设备选择、单设备回退、独立副作用许可与不重试；确认上游下游 Context 限制及失败后的人工状态核对。
+- [ ] 实际验证 EOAIC2 原始管理员 Context、`_function_result`、模型选工具和参数描述，并回归既有原生 HA 控制 Functions。
+- [ ] 实际通过 HACS/Release 升级、重启及选项保持；原四个动作兼容，第五个参数描述动作可用。
+- [ ] 复核发布时的上游变更、受支持 HA 版本、参数/输出预算及全部契约检查；当前非 Home Control 工具没有未记录的兼容缺口，CI 无遗漏或跳过。
+
+模拟和契约测试不等于联网、物理设备、实际模型、Assist/TTS 或安装验收。用户尚未明确报告 v0.5 或 v0.6 实际验收通过；历史版本的总体验收也不补写逐项证据。各版本结果见 [TESTING.md](TESTING.md)。

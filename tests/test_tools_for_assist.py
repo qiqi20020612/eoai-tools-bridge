@@ -16,6 +16,7 @@ from custom_components.eoai_tools_bridge.const import (
     CONF_ALLOWED_TOOLS,
     CONF_ENABLED,
     DOMAIN,
+    LEGACY_READ_ONLY_TOOLS,
 )
 from scripts.fetch_tools_upstream import DESTINATION
 
@@ -394,7 +395,11 @@ def test_full_upstream_inventory_and_remaining_families(tools_source):
     for api_id, module_name, class_name, _ in QUERIES:
         module = tools_source(module_name)
         pairs.add((api_id, getattr(module, class_name).name))
-    assert pairs == AUDITED_READ_ONLY_TOOLS
+    assert (
+        pairs
+        == (AUDITED_READ_ONLY_TOOLS - {("basic_utilities", "calculate")})
+        | LEGACY_READ_ONLY_TOOLS
+    )
     for module, name in [("calculator", "calculate"), ("play_media", "play_video")]:
         tree = ast.parse((DESTINATION / f"{module}.py").read_text())
         names = [
@@ -467,7 +472,9 @@ async def test_native_query_argument_errors_never_dispatch(
 async def test_all_nine_query_pairs_fit_catalog_and_readiness(
     hass, bridge_entry, admin_context, tools_source
 ):
-    pairs = sorted(AUDITED_READ_ONLY_TOOLS)
+    pairs = sorted(
+        {(case[0], getattr(tools_source(case[1]), case[2]).name) for case in QUERIES}
+    )
     hass.config_entries.async_update_entry(
         bridge_entry,
         options={

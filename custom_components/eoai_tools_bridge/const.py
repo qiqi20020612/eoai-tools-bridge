@@ -6,6 +6,7 @@ SERVICE_SEARCH_WEB = "search_web"
 SERVICE_LIST_TOOLS = "list_tools"
 SERVICE_CALL_TOOL = "call_tool"
 SERVICE_CHECK_TOOLS = "check_tools"
+SERVICE_DESCRIBE_TOOL = "describe_tool"
 API_ID = "llm_intents"
 TOOL_NAME = "search_web"
 
@@ -64,7 +65,8 @@ TOOL_ERROR_MESSAGES = {
 CATALOG_ALLOWLIST = frozenset({(API_ID, TOOL_NAME)})
 # Audited against the immutable source in docs/TOOLS_COMPATIBILITY.md. These
 # classifications grant no access: additional tools still need exact opt-in and
-# the original active administrator. Calculator and control tools stay unknown.
+# the original active administrator. Calculator calls also require the numeric
+# grammar/budgets in calculator.py before the native tool may execute.
 AUDITED_READ_ONLY_TOOLS = CATALOG_ALLOWLIST | frozenset(
     {
         (API_ID, "find_places"),
@@ -74,9 +76,12 @@ AUDITED_READ_ONLY_TOOLS = CATALOG_ALLOWLIST | frozenset(
         ("weather_forecast", "get_weather_forecast"),
         ("basic_utilities", "unit_convert"),
         ("basic_utilities", "calendar_day_info"),
-        ("HomeControl", "get_device_history_context"),
+        ("basic_utilities", "calculate"),
     }
 )
+# Home Control is outside the current support scope. Retain only the already
+# shipped v0.5 classification so existing explicit configurations do not break.
+LEGACY_READ_ONLY_TOOLS = frozenset({("HomeControl", "get_device_history_context")})
 CATALOG_TIMEOUT_SECONDS = 10
 MAX_CATALOG_DESCRIPTION_LENGTH = 2000
 MAX_CATALOG_SCHEMA_BYTES = 8192
@@ -94,6 +99,13 @@ CATALOG_ERROR_MESSAGES = {
         "An allowed tool has an unsupported or oversized parameter schema."
     ),
     "invalid_metadata": "An allowed tool has unsupported catalog metadata.",
+}
+
+DESCRIBE_ERROR_MESSAGES = {
+    **TOOL_ERROR_MESSAGES,
+    "invalid_metadata": "The allowed tool has unsupported public metadata.",
+    "tool_changed": "The tool definition changed while reading its metadata.",
+    "timeout": "Reading tool metadata timed out. No tool was called.",
 }
 
 MAX_QUERY_LENGTH = 500

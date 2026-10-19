@@ -1,0 +1,4 @@
+action: eoai_tools_bridge.describe_tool
+data:
+  api_id: media_services
+  tool_name: play_video

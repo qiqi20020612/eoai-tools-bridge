@@ -17,9 +17,11 @@ from .const import (
     DOMAIN,
     SERVICE_CALL_TOOL,
     SERVICE_CHECK_TOOLS,
+    SERVICE_DESCRIBE_TOOL,
     SERVICE_LIST_TOOLS,
     SERVICE_SEARCH_WEB,
 )
+from .describe import DESCRIBE_TOOL_SCHEMA, async_describe_tool
 from .gateway import CALL_TOOL_SCHEMA, async_call_tool
 from .readiness import CHECK_TOOLS_SCHEMA, async_check_tools
 from .search import SEARCH_SCHEMA, async_search, failure_response
@@ -59,6 +61,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         """Inspect only the administrator's explicitly configured tools."""
         return await async_check_tools(hass, call)
 
+    async def handle_describe_tool(call: ServiceCall) -> ServiceResponse:
+        """Inspect a single explicitly configured tool as the original admin."""
+        return await async_describe_tool(hass, call)
+
     if not hass.services.has_service(DOMAIN, SERVICE_SEARCH_WEB):
         hass.services.async_register(
             DOMAIN,
@@ -89,6 +95,14 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             SERVICE_CHECK_TOOLS,
             handle_check_tools,
             schema=CHECK_TOOLS_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+    if not hass.services.has_service(DOMAIN, SERVICE_DESCRIBE_TOOL):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_DESCRIBE_TOOL,
+            handle_describe_tool,
+            schema=DESCRIBE_TOOL_SCHEMA,
             supports_response=SupportsResponse.ONLY,
         )
     return True

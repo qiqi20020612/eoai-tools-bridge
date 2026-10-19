@@ -163,7 +163,6 @@ def test_audited_classification_requires_tools_for_assist_integration(pair):
 @pytest.mark.parametrize(
     "pair",
     [
-        ("basic_utilities", "calculate"),
         ("media_services", "play_video"),
         ("HomeControl", "intent__HassTurnOn"),
         ("HomeControl", "script__example"),

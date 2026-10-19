@@ -47,13 +47,27 @@
     "check_tools": {
       "name": "检查工具就绪状态",
       "description": "仅管理员可检查已配置白名单工具的当前状态，无需入参，必须接收响应。不会执行工具或参数默认值。success 仅表示检查完成；ready 不代表后端连接、密钥或具体参数已经验证，也不授予新权限。"
+    },
+    "describe_tool": {
+      "name": "查看白名单工具参数",
+      "description": "仅原始有效管理员可查看一个已明确启用工具的公开参数；不调用工具或默认值工厂。允许在副作用许可关闭时查看播放等工具，查看结果不授予执行权限。必须接收响应。",
+      "fields": {
+        "api_id": {
+          "name": "API 标识",
+          "description": "已在桥接选项中明确允许的确切 API 标识。"
+        },
+        "tool_name": {
+          "name": "工具名称",
+          "description": "需要查看参数的已启用工具确切名称。"
+        }
+      }
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "受控工具调用",
-        "description": "仅填写你信任的 API/工具，每行一个，例如 llm_intents/search_web。最多 32 项，不支持通配符；保存后立即生效。call_tool 默认关闭，只接受原始有效管理员身份；没有 user_id 的语音/自动化不能使用该入口，原有搜索仍可使用。副作用许可包含写入、破坏性和未声明只读的工具，请只添加你愿意授予权限的工具。 已审核的 Tools for Assist 查询工具无需副作用许可；写入、破坏性及无只读依据的工具仍需另外允许。",
+        "description": "仅填写你信任的 API/工具，每行一个，例如 llm_intents/search_web。最多 32 项，不支持通配符；保存后立即生效。call_tool 默认关闭，只接受原始有效管理员身份；没有 user_id 的语音/自动化不能使用该入口，原有搜索仍可使用。已审核的 Tools for Assist 查询工具及受限数值计算器无需副作用许可；写入、播放、破坏性及无只读依据的工具仍需另外允许。请只添加你愿意授权的工具。Home Control 不在桥接支持范围内，请使用 EOAIC2 原生 HA 控制。",
         "data": {
           "enabled": "启用 call_tool",
           "allowed_tools": "API/工具白名单",

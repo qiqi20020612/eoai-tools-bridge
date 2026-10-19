@@ -19,6 +19,20 @@ call_tool:
         object:
 check_tools:
   fields: {}
+describe_tool:
+  fields:
+    api_id:
+      required: true
+      example: "media_services"
+      selector:
+        text:
+          multiline: false
+    tool_name:
+      required: true
+      example: "play_video"
+      selector:
+        text:
+          multiline: false
 list_tools:
   fields: {}
 search_web:

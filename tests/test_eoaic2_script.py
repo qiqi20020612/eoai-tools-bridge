@@ -4,11 +4,7 @@ The model and network search provider remain simulated. This is an upstream
 script contract test, not a live Assist/conversation/TTS end-to-end test.
 """
 
-import hashlib
-import importlib
-import sys
 from pathlib import Path
-from types import ModuleType
 
 import probatio as vol
 import pytest
@@ -22,38 +18,9 @@ from custom_components.eoai_tools_bridge.const import (
     CONF_ENABLED,
     TOOL_NAME,
 )
-from scripts.fetch_test_upstream import DESTINATION, FILES
 
 pytestmark = pytest.mark.upstream
 ROOT = Path(__file__).resolve().parents[1]
-
-
-@pytest.fixture
-def upstream_script_function():
-    """Load original modules without starting the full upstream integration."""
-    for relative_path, expected in FILES.items():
-        path = DESTINATION / relative_path
-        if not path.exists():
-            pytest.skip("Run python scripts/fetch_test_upstream.py first")
-        assert hashlib.sha256(path.read_bytes()).hexdigest() == expected
-
-    prefix = "_eoai_bridge_contract_upstream"
-    # Namespace packages avoid executing upstream's unrelated full integration
-    # and function registry. const/base/exceptions/script themselves are original.
-    for suffix, directory in [
-        ("", DESTINATION),
-        (".functions", DESTINATION / "functions"),
-    ]:
-        module = ModuleType(prefix + suffix)
-        module.__path__ = [str(directory)]
-        sys.modules[prefix + suffix] = module
-    try:
-        script_module = importlib.import_module(prefix + ".functions.script")
-        yield script_module.ScriptFunction()
-    finally:
-        for name in list(sys.modules):
-            if name == prefix or name.startswith(prefix + "."):
-                sys.modules.pop(name)
 
 
 @pytest.fixture
