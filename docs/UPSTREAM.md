@@ -4,14 +4,15 @@
 
 | 项目 | 基准 | 固定提交 |
 | --- | --- | --- |
-| HA Core | `2026.10.0` | `6a811d3359c7b2076dc9e1cf900843a129c044af` |
+| HA Core（当前基准） | `2026.10.2` | `8d7fd8b68677c2585be36ec86043308f403875b8` |
+| HA Core（原基准） | `2026.10.0` | `6a811d3359c7b2076dc9e1cf900843a129c044af` |
 | Tools for Assist（原基线） | `master` | `100e740b93a2a1a6d304329883937193a4571ac0` |
 | Tools for Assist（当前发布基准） | `1.11.0` | `198e37885fe06e6452d2d6e26bc5e532b1686acc` |
 | EOAIC2 | `develop` | `b0274f752fc01495875522db9281c335af8cf484` |
 
 ## HA Core
 
-[helpers/llm.py](https://github.com/home-assistant/core/blob/6a811d3359c7b2076dc9e1cf900843a129c044af/homeassistant/helpers/llm.py) 确认：
+[helpers/llm.py](https://github.com/home-assistant/core/blob/8d7fd8b68677c2585be36ec86043308f403875b8/homeassistant/helpers/llm.py) 确认：
 
 - `async_get_api(hass, api_id, llm_context)` 返回 `APIInstance`，API 不存在时抛 `HomeAssistantError`。
 - `LLMContext` 接受 `platform, context, language, assistant, device_id`。
@@ -19,25 +20,34 @@
 - 第三方工具返回字典时，HA 2026.10 将其包装为 `ToolResult(data=...)` 并报告弃用，字典返回兼容截至 2027.11.0 的弃用期限。桥接处理 `ToolResult`，额外保留字典防御分支。
 - 尽管该方法的 docstring 提及校验，当前实现直接调用工具，未替桥接完成查询长度/类型/白名单验证。因此桥接服务自己严格验证。
 
-[core.py](https://github.com/home-assistant/core/blob/6a811d3359c7b2076dc9e1cf900843a129c044af/homeassistant/core.py) 确认服务注册接受 `supports_response=SupportsResponse.ONLY`；调用必须请求响应，Python 调用还必须 blocking。参数 Schema 使用 `probatio`，而不是旧版 HA 示例中的 `voluptuous`。
+[core.py](https://github.com/home-assistant/core/blob/8d7fd8b68677c2585be36ec86043308f403875b8/homeassistant/core.py) 确认服务注册接受 `supports_response=SupportsResponse.ONLY`；调用必须请求响应，Python 调用还必须 blocking。参数 Schema 使用 `probatio`，而不是旧版 HA 示例中的 `voluptuous`。
 
-[pyproject.toml](https://github.com/home-assistant/core/blob/6a811d3359c7b2076dc9e1cf900843a129c044af/pyproject.toml) 要求 Python `>=3.14.2`、`probatio==0.13.0`。本项目运行时没有额外 pip 依赖。
+[pyproject.toml](https://github.com/home-assistant/core/blob/8d7fd8b68677c2585be36ec86043308f403875b8/pyproject.toml) 要求 Python `>=3.14.2`、`probatio==0.13.0`。本项目运行时没有额外 pip 依赖。
 
 v0.2 清单使用 `async_get_apis` 枚举注册表，先过滤固定 API 白名单，再通过 `async_get_api` 取得工具的公开 `name/title/description/parameters/annotations`。不读取工具配置、不导入第三方内部模块、不调用 `async_call_tool`。
 
-[openai_conversation/entity.py](https://github.com/home-assistant/core/blob/6a811d3359c7b2076dc9e1cf900843a129c044af/homeassistant/components/openai_conversation/entity.py) 使用 `probatio.to_openapi(..., custom_serializer=..., openapi_version="3.1.0")` 转换工具参数。本集成沿用公开接口，额外启用 `strict=True`，避免不支持的约束被放宽，并限制 Schema 结构、大小和输出字段。
+[openai_conversation/entity.py](https://github.com/home-assistant/core/blob/8d7fd8b68677c2585be36ec86043308f403875b8/homeassistant/components/openai_conversation/entity.py) 使用 `probatio.to_openapi(..., custom_serializer=..., openapi_version="3.1.0")` 转换工具参数。本集成沿用公开接口，额外启用 `strict=True`，避免不支持的约束被放宽，并限制 Schema 结构、大小和输出字段。
 
-[homeassistant/__init__.py](https://github.com/home-assistant/core/blob/6a811d3359c7b2076dc9e1cf900843a129c044af/homeassistant/__init__.py) 在启动时调用 `probatio.compat.install_as_voluptuous()`。因此 Tools for Assist 的 `import voluptuous as vol` 在正常 HA 2026.10 进程中解析为 probatio 兼容层；不能根据包内仍存在 `voluptuous` 字样就断言其 Schema 不可转换，也不需要导入上游内部模块实现转换。
+[homeassistant/__init__.py](https://github.com/home-assistant/core/blob/8d7fd8b68677c2585be36ec86043308f403875b8/homeassistant/__init__.py) 在启动时调用 `probatio.compat.install_as_voluptuous()`。因此 Tools for Assist 的 `import voluptuous as vol` 在正常 HA 2026.10 进程中解析为 probatio 兼容层；不能根据包内仍存在 `voluptuous` 字样就断言其 Schema 不可转换，也不需要导入上游内部模块实现转换。
 
 HA `ToolAnnotations` 的默认值为 `read_only=False, destructive=True`，代表未声明时保守处理。固定快照中的 Tools for Assist 搜索工具直接继承未声明状态；v0.2 仅对已经审核的 `llm_intents/search_web` 使用白名单依据，并在清单标记 `read_only_basis=audited_allowlist`。若上游给出独立声明，则必须同时为只读且无破坏性。`read_only=true` 不会自行扩大 API/工具白名单。
 
-v0.3 `call_tool` 使用同一公开注册/调度接口，只在当前精确白名单和原始有效管理员授权通过后取得 API。HA 2026.10.0 的 `APIInstance.async_call_tool` 不调用工具的参数 Schema，因此桥接先执行工具公开的 probatio Schema，并再次检查结果是受限 JSON 对象，再交给原生调度。Schema/default 工厂运行一次；v0.3 当时的清单仍拒绝带默认值的 Schema；调用与发现采用不同的执行边界。HA 会在 LLM trace 中记录工具名和参数，桥接自身不记录正文。
+v0.3 `call_tool` 使用同一公开注册/调度接口，只在当前精确白名单和原始有效管理员授权通过后取得 API。HA 2026.10.2 的 `APIInstance.async_call_tool` 仍不调用工具的参数 Schema，因此桥接先执行工具公开的 probatio Schema，并再次检查结果是受限 JSON 对象，再交给原生调度。Schema/default 工厂运行一次；v0.3 当时的清单仍拒绝带默认值的 Schema；调用与发现采用不同的执行边界。HA 会在 LLM trace 中记录工具名和参数，桥接自身不记录正文。
 
-[auth/models.py](https://github.com/home-assistant/core/blob/6a811d3359c7b2076dc9e1cf900843a129c044af/homeassistant/auth/models.py) 提供用户的 `is_active` 和 `is_admin`；桥接通过 `hass.auth.async_get_user` 查询原始 Context 用户，不靠模型参数声明身份。缺少用户或非管理员明确拒绝。测试使用真实 HA 认证存储的用户。未声明只读的工具、写入或破坏性工具需要另外启用副作用选项；注释不作为 Python 沙箱。
+[auth/models.py](https://github.com/home-assistant/core/blob/8d7fd8b68677c2585be36ec86043308f403875b8/homeassistant/auth/models.py) 提供用户的 `is_active` 和 `is_admin`；桥接通过 `hass.auth.async_get_user` 查询原始 Context 用户，不靠模型参数声明身份。缺少用户或非管理员明确拒绝。测试使用真实 HA 认证存储的用户。未声明只读的工具、写入或破坏性工具需要另外启用副作用选项；注释不作为 Python 沙箱。
 
-[config_entries.py](https://github.com/home-assistant/core/blob/6a811d3359c7b2076dc9e1cf900843a129c044af/homeassistant/config_entries.py) 的公开 OptionsFlow 在初始化后提供 `config_entry`。桥接保留单实例配置流与版本 1，新增原生选项流；旧配置没有授权选项，通用调用默认关闭。运行时每次读取选项和已加载状态，无需维护 API 实例或额外重载缓存。
+[config_entries.py](https://github.com/home-assistant/core/blob/8d7fd8b68677c2585be36ec86043308f403875b8/homeassistant/config_entries.py) 的公开 OptionsFlow 在初始化后提供 `config_entry`。桥接保留单实例配置流与版本 1，新增原生选项流；旧配置没有授权选项，通用调用默认关闭。运行时每次读取选项和已加载状态，无需维护 API 实例或额外重载缓存。
 
-v0.4 增量复核日期为 **2026-10-10**，继续采用上述固定 HA 快照。`check_tools` 仅使用 `async_get_apis`、逐项授权 API 的 `async_get_api` 和工具公开的 `name/annotations/parameters`。Schema 只做 probatio 类型检查，既不执行校验，也不调用 `to_openapi` 或自定义序列化器；因此可检查带默认值的工具而不求值默认工厂。`ready` 只描述权限及元数据的当前状态，不能替代真实工具调用或参数校验。禁用通用调用时只读注册表，不取得 APIInstance；不修改配置、扩大权限或使用缺失用户的替代身份。
+v0.4 增量复核日期为 **2026-10-10**，当时采用原基准 HA 2026.10.0。`check_tools` 仅使用 `async_get_apis`、逐项授权 API 的 `async_get_api` 和工具公开的 `name/annotations/parameters`。Schema 只做 probatio 类型检查，既不执行校验，也不调用 `to_openapi` 或自定义序列化器；因此可检查带默认值的工具而不求值默认工厂。`ready` 只描述权限及元数据的当前状态，不能替代真实工具调用或参数校验。禁用通用调用时只读注册表，不取得 APIInstance；不修改配置、扩大权限或使用缺失用户的替代身份。
+
+
+### 2026-10-19：基准升级到 HA Core 2026.10.2
+
+按用户要求，将当前源码和开发/CI 基准升级到 [HA Core 2026.10.2](https://github.com/home-assistant/core/releases/tag/2026.10.2)，固定提交 `8d7fd8b68677c2585be36ec86043308f403875b8`。开发依赖明确固定 `homeassistant==2026.10.2` 和 `pytest-homeassistant-custom-component==0.13.373`；后者的 PyPI 元数据也要求同版 HA。锁文件仅升级 HA、配套测试插件及其要求的 `aiohttp` 3.14.4 → 3.14.5；Python 仍要求 >=3.14.2，probatio 仍为 0.13.0。
+
+对比两版已安装的官方发行包中 11 个相关源码文件：LLM、服务核心、配置项、用户模型、脚本、选择器、服务描述、翻译、初始化及 OpenAI 参数转换的 10 个文件逐字节一致；`auth/__init__.py` 增加删除用户时撤销其刷新令牌的处理。桥接使用的公开接口与原始有效管理员检查约定保持适用，无需修改桥接运行代码。GitHub compare 的文件列表达到 300 项上限，因此逐文件比对发行包，不以列表中缺少某文件推断它未变。
+
+在新基准下运行完整 **443 项**回归，**0 skipped**，覆盖真实 HA 服务/认证/配置/Schema、原版 EOAIC2 ScriptFunction 及 Tools for Assist 原版契约。Ruff 静态与格式检查通过；网络和播放后端仍模拟，实际用户环境验收另计。完整结果及 CI 证据见 [TESTING.md](TESTING.md)。
 
 ## Tools for Assist
 

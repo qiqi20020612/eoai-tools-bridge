@@ -4,7 +4,7 @@
 
 **Home Control API 已按用户决定退出项目范围。** HA 设备控制继续使用 EOAIC2 原生 Functions；本项目后续不实现 Home Control 动态控制、脚本、设备上下文或计时器。
 
-适用版本：**Home Assistant Core 2026.10.x**；源码与自动化测试基准为 **2026.10.0**。开发环境需要 Python **3.14.2 或更新的 3.14 版本**。集成版本：`0.6.0`。
+适用版本：**Home Assistant Core 2026.10.x**；源码与自动化测试基准为 **2026.10.2**。开发环境需要 Python **3.14.2 或更新的 3.14 版本**。集成版本：`0.6.0`。
 
 ```text
 EOAIC2 web_search（script Function）
@@ -98,7 +98,7 @@ data:
         response_variable: _function_result
 ```
 
-这里有意使用**整个 data 字典的模板**。HA 会解析单字段模板的结果，`query: "{{ query }}"` 会把字符串 `"123"` 转成数字，导致严格字符串校验拒绝查询。字典模板保留参数的字符串类型；参数里出现的 `{{ ... }}` 也不会再次作为模板执行。此差异已用原版 EOAIC2 `ScriptFunction` 与 HA 2026.10.0 验证。
+这里有意使用**整个 data 字典的模板**。HA 会解析单字段模板的结果，`query: "{{ query }}"` 会把字符串 `"123"` 转成数字，导致严格字符串校验拒绝查询。字典模板保留参数的字符串类型；参数里出现的 `{{ ... }}` 也不会再次作为模板执行。此差异已用原版 EOAIC2 `ScriptFunction` 与 HA 2026.10.2 验证。
 
 保存选项，按 EOAIC2 自身要求重载，再在 EOAIC2 聊天界面询问「搜索今天 AI 新闻」。确认实际函数调用及搜索响应，而不是仅凭模型回答判断联网成功。再测试「打开卧室灯」，确认仍调用原有设备控制函数。Codex Assist 使用其自己的搜索和对话配置，不需要接入此桥接。
 
@@ -381,7 +381,7 @@ logger:
 
 ## 测试和开发
 
-使用独立虚拟环境安装开发依赖；`uv.lock` 固定测试版本，其中 `pytest-homeassistant-custom-component==0.13.371` 依赖 HA Core `2026.10.0`：
+使用独立虚拟环境安装开发依赖；`pyproject.toml` 和 `uv.lock` 明确固定 `homeassistant==2026.10.2` 与 `pytest-homeassistant-custom-component==0.13.373`，后者也精确依赖同版 HA Core。CI 会输出实际测试版本：
 
 ```sh
 uv sync --locked --group dev --python 3.14

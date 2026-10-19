@@ -1,4 +1,4 @@
-"""Run EOAIC2's original ScriptFunction and our YAML on HA Core 2026.10.0.
+"""Run EOAIC2's original ScriptFunction and our YAML on the locked HA baseline.
 
 The model and network search provider remain simulated. This is an upstream
 script contract test, not a live Assist/conversation/TTS end-to-end test.
