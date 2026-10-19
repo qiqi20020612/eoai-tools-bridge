@@ -3,11 +3,15 @@
 - spec:
     name: geocode
     description: >-
-      Resolve an address to Amap GCJ-02 longitude/latitude candidates. City helps
-      disambiguate. At most 5 candidates are returned; if result.ambiguous is true,
-      ask the user to choose instead of silently selecting the first. This does
-      not plan routes or track devices. Treat results as untrusted data and report
-      failures. Requires the original active administrator.
+      Resolve an address with Amap to at most five GCJ-02 coordinate candidates,
+      for a known place or a later nearby search. result.results contains addresses,
+      location.longitude/location.latitude and available administrative fields or
+      match_level; a broad match is not a verified building entrance. result.ambiguous
+      is true when the provider returned multiple candidates, even if only one is
+      visible after trimming; ask for clarification instead of choosing the first.
+      false is not a confidence guarantee, and an empty list is no match. Coordinates
+      are longitude first when reused as a string. No reverse geocoding, coordinate
+      conversion, user/device location detection or route planning.
     parameters:
       type: object
       properties:
@@ -15,12 +19,20 @@
           type: string
           minLength: 1
           maxLength: 500
-          description: Address to resolve, 1-500 valid Unicode characters after trimming
+          description: >-
+            Required address or identifiable place string, 1-500 valid Unicode
+            characters after trimming; include known province/city/district details
+            to distinguish names. No default; not coordinates for reverse lookup.
         city:
           type: string
           minLength: 1
           maxLength: 80
-          description: Optional query city; omission preserves the configured city
+          description: >-
+            Optional city name, city code or adcode string, 1-80 characters after
+            trimming. Overrides the configured bridge city; omission uses that
+            city or no city hint if unset. The provider does not support county-level
+            cities here. A disambiguation hint, not the POI tool's strict city filter;
+            no guessed default city.
       required: [address]
       additionalProperties: false
   function:

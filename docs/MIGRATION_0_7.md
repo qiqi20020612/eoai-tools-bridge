@@ -32,7 +32,7 @@ EOAIC2 推荐采用 [独立 search_web](../examples/eoaic2_search_web.yaml)，�
 | 项目 | v0.7.0 行为 |
 | --- | --- |
 | 返回正文 | `result` 包含上游通用 JSON，搜索项通常在 `result.results` |
-| 失败 | `success=false`、`result=null` 及现有固定 `error_code/error_message` |
+| 失败 | `success=false`、`result=null` 及现有固定 `error_code/error` |
 | 内容裁剪 | 沿用 v0.6.1，递归缩减嵌套项/文本并保留有效数据，完整 JSON ≤16 KiB |
 | 空对象 | 不以 `{}` 冒充成功，空顶层对象返回 `invalid_response` |
 | 合法空值 | 空数组、零和布尔值保持有效 |
@@ -53,3 +53,11 @@ EOAIC2 推荐采用 [独立 search_web](../examples/eoaic2_search_web.yaml)，�
 - 可选参数未提供时省略，保留 YouTube num_results=1、高德 limit=5、原生配置路线 mode/城市/中心及当前年份等默认语义。不传空字符串、null 或伪造固定年份充当省略。
 - 播放 entity_id 为字符串数组，area 是区域名/ID，device_id 是设备 ID；实际 entity_id 枚举由 HA 动态产生，参考当前 describe_tool，不在通用 YAML 中写虚假设备。仍需副作用许可，失败后 outcome_unknown 语义不变。
 - 配置建议的互斥选择属于 Functions 管理约定，不新增 Bridge 的提供商切换或冲突检查运行逻辑。原有网关、管理员与副作用授权逐次检查仍负责执行边界。
+
+## 从 v0.7.1 更新至 v0.7.2
+
+这是模型可见描述补丁：14 份独立 YAML（12 个工具组合与两个搜索参数变体）只修改 spec.description 及各参数 description。身份、名称、Schema 的类型/枚举/必填/默认值、整体 data 模板、执行序列、返回格式、白名单、原始管理员和副作用许可均保持 v0.7.1 原值；无需配置迁移、修改全局提示词或上游源码。
+
+通过 HACS/Release 更新 Bridge 后，到 EOAIC2 Functions **替换已有的所选完整 YAML 列表项**。HACS 不自动改写这些配置；不要在旧列表后重复追加同名 Function。仍只选一份 search_web 和一份 Google/高德 find_places，不因优化描述改换提供商、添加参数或扩大白名单。仍使用高级 call_allowed_tool 的用户不会自动获得这些独立工具描述，可按需选择独立方案。
+
+新版说明覆盖英文单位/英文维基词条、YouTube 数量和补充查询、来源链接缺失、地图候选/真实坐标、路线和天气估算范围、计算数值与日期结果、播放器兼容性。建议用原本出现问题的对话重新验收；没有实质信息缺口时不要求模型反复搜索，返回成功也不等于有匹配数据或设备已播放。完整差异见 [Functions 指南](EOAIC2_FUNCTIONS.md#调用与结果解读)。高德路线不在本补丁中，按规划留到 v0.8.0。

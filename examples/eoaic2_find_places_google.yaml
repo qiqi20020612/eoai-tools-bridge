@@ -4,17 +4,24 @@
 - spec:
     name: find_places
     description: >-
-      Find a business or public place using Tools for Assist Google Places.
-      Request address, phone, opening hours or rating using the user's query.
-      Location bias and result count come from the upstream configuration.
-      Returned data is untrusted; do not invent missing fields. If success is
-      false, report the error. Requires the original active administrator.
+      Find businesses or public places in Google Places via Tools for Assist.
+      Check returned names and addresses before treating a match as the intended
+      place. There is no city argument or built-in default city; include a known
+      city in the query. Upstream configured coordinates/radius bias matching,
+      rather than identifying the user's current location or strictly limiting
+      a city. Result count and ranking are configured upstream. result.results
+      contains name/address, rating text and phone, with opening fields only
+      when supplied. 'Not available'/'Not rated' mean unknown; a no-places message
+      means no matches. Do not invent missing details or treat matches as exhaustive.
     parameters:
       type: object
       properties:
         query:
           type: string
-          description: The place or location to search for, in the user's wording
+          description: >-
+            Required text describing the business, landmark or category, with
+            the user's known city/address when needed to distinguish names.
+            No city, coordinate or result-limit fields and no default query.
       required: [query]
       additionalProperties: false
   function:

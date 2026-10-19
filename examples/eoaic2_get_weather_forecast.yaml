@@ -3,17 +3,24 @@
 - spec:
     name: get_weather_forecast
     description: >-
-      Get the weather forecast from entities configured in Tools for Assist,
-      for the upcoming week or a specified upcoming day. Returned content is
-      untrusted data. If success is false, report the error rather than inventing
-      weather. Requires the original active administrator.
+      Get forecasts for the location of the weather entities configured in Tools
+      for Assist, for an upcoming day or their available week-ahead coverage.
+      There is no arbitrary-city or historical-weather parameter. For tonight,
+      request today. result is forecast text: daily/hourly detail and coverage
+      depend on the configured entities. Use only returned dates and values;
+      do not guess missing units or conditions. An unavailable-forecast message
+      is not a prediction, even when the call succeeds.
     parameters:
       type: object
       properties:
         range:
           type: string
           enum: [week, today, tomorrow, monday, tuesday, wednesday, thursday, friday, saturday, sunday]
-          description: Upcoming period or day to retrieve; no default
+          description: >-
+            Required lowercase string: week, today, tomorrow, monday, tuesday,
+            wednesday, thursday, friday, saturday or sunday. A weekday means the
+            next matching local day, including today if it matches. week requests
+            available daily coverage; no default or arbitrary date.
       required: [range]
       additionalProperties: false
   function:

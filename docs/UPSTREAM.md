@@ -1,6 +1,6 @@
 # 上游源码核对
 
-初次核对：**2026-10-10**；最近增量核对：**2026-10-19（Asia/Shanghai）**。开发依据以下实际源码快照，未修改任何上游源码或实际 HA 安装目录。
+初次核对：**2026-10-10**；最近增量核对：**2026-10-20（Asia/Shanghai）**。开发依据以下实际源码快照，未修改任何上游源码或实际 HA 安装目录。
 
 | 项目 | 基准 | 固定提交 |
 | --- | --- | --- |
@@ -132,3 +132,17 @@ Key 为可选可信配置，不在模型参数中出现；仅固定 HTTPS 端点
 网页搜索四实现共用同一工具名：Brave Web/SearXNG 只接受 query；Brave LLM Context 另有 freshness 的四项原生枚举；Tavily 另有 topic/time_range。独立 search_web 通过不同互斥示例保留差异，query-only 可用于四家，不用 Schema 并集。路线 mode 省略保留原版配置默认，year 省略保留原版当前本地年份；YouTube num_results=1、高德 limit=5 的 Schema 默认由原工具应用。
 
 原版媒体的 entity_id 选择器为当前设备列表构成的字符串数组枚举，不能在可复制的通用模板中伪造固定值；示例准确保留数组、area 和 device_id，动态取值仍由原生选择器验证。原版 HA 模板环境有同名 device_id() 函数，示例在该可选字段不存在时排除可调用内置对象，避免参数渲染成非字典。完整参数与已知语义见 [Functions 指南](EOAIC2_FUNCTIONS.md)。
+
+## v0.7.2：模型可见描述的行为核对
+
+2026-10-20 重新阅读同一 Tools for Assist 1.11.0 固定快照的所有非 Home Control 工具实现，以及本项目现有 amap/amap_client/calculator/payload；不升级源快照、改动 Schema 或派发逻辑，不修改任何上游/安装文件。描述分工为：工具说明调用时机、限制与结果，参数说明格式、枚举、默认和组合约束。全部 14 份示例除 description 外与 v0.7.1 的结构相同，自动化保存其规范 JSON 的 SHA-256，CI 无需下载旧版或读取 Git 历史。
+
+- [单位换算](https://github.com/skye-harris/llm_intents/blob/198e37885fe06e6452d2d6e26bc5e532b1686acc/custom_components/llm_intents/unit_converter.py)：实际常量支持 9 个体积、6 个重量和 2 个温度英文标识，含原描述漏掉的 dl；只小写化标识，不翻译中文或自动识别复数。amount 是字符串，返回 value 四舍五入到四位小数，不同类别拒绝。
+- [维基百科](https://github.com/skye-harris/llm_intents/blob/198e37885fe06e6452d2d6e26bc5e532b1686acc/custom_components/llm_intents/wikipedia.py)：请求与摘要地址固定 en.wikipedia.org，无语言参数；输出 title/summary、不输出 URL。英文查询与用户语言回答是新版 Function 的模型指导，不是新增翻译执行链路。
+- [YouTube](https://github.com/skye-harris/llm_intents/blob/198e37885fe06e6452d2d6e26bc5e532b1686acc/custom_components/llm_intents/youtube.py)：num_results 为 1–25 的最大请求数，省略 1，实际可能不足；输出标题、链接、频道、描述、发布时间，搜索不触发播放。根据需求选数量/缺口时补充，是模型指导而非自动重试代码。
+- 搜索四实现均把返回项重建为 title/content，包括 [Tavily](https://github.com/skye-harris/llm_intents/blob/198e37885fe06e6452d2d6e26bc5e532b1686acc/custom_components/llm_intents/tavily_search.py)，因此 HTTP 自带 URL 也不会成为独立来源字段。Tavily answer 是配置可选的生成摘要，不是另一来源；Brave LLM Context 的 content 还可能含解析后的对象。现有 query/freshness/topic/time_range 的提供商隔离不变。
+- [Google Places](https://github.com/skye-harris/llm_intents/blob/198e37885fe06e6452d2d6e26bc5e532b1686acc/custom_components/llm_intents/google_places.py) 只有 query，无默认城市；配置坐标/radius 构成 locationBias，不是严格城市边界。数量配置默认 2，缺电话/评分有占位文本；高德 city 则传 region/city_limit。高德附近必须有真实 GCJ-02 中心，radius/sort、distance/types 的桥接组合限制维持原值；客户端元数据先于通用裁剪产生。
+- [Google Routes](https://github.com/skye-harris/llm_intents/blob/198e37885fe06e6452d2d6e26bc5e532b1686acc/custom_components/llm_intents/google_routes.py)：固定配置起点；先用 Places 解析目的地再查路线。mode 取配置或 DRIVE；时间缺失/无法解析为现在，朴素时间取 HA 时区，过去时间改为当前后 10 秒。结果是嵌套 result 中的格式化距离/时长及可选估算时间，不是任意起点或高德路线。
+- [天气](https://github.com/skye-harris/llm_intents/blob/198e37885fe06e6452d2d6e26bc5e532b1686acc/custom_components/llm_intents/weather.py)、[日期](https://github.com/skye-harris/llm_intents/blob/198e37885fe06e6452d2d6e26bc5e532b1686acc/custom_components/llm_intents/date_info.py)、前述计算与媒体实现：天气直接返回可用预报文本；日期为公历日期与英文星期；计算表达式 value 是字符串、聚合是数字且受既有数值限制；播放器自动发现检查 tv/receiver 与 PLAY_MEDIA，成功仅证明服务方法返回，URL 支持和实际播放仍需设备验收。
+
+另核对 [高德 POI 2.0](https://lbs.amap.com/api/webservice/guide/api/newpoisearch) 的城市/坐标说明与 [地理编码](https://lbs.amap.com/api/webservice/guide/api/georegeo) 的 city、经度/纬度和匹配级别说明；只映射本项目已实现参数，未暴露官方接口的其他能力。geocode ambiguous 按原始候选数判断，不代表置信度。高德路线仍在 v0.8.0 单独开发，本次不改 Google get_route 或新增路线能力。

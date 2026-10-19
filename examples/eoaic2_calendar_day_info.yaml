@@ -2,10 +2,12 @@
 - spec:
     name: calendar_day_info
     description: >-
-      Get the weekday and formatted date for a valid calendar date using Tools
-      for Assist. Omit year to let the upstream use the current local year;
-      never fill a fixed year as its default. Report failures instead of inventing
-      a date. Requires the original active administrator.
+      Get the weekday and formatted date of a valid Gregorian calendar date using
+      Tools for Assist. This does not read calendars, events, holidays or lunar
+      dates. result.day is the English weekday, result.date the formatted date,
+      and result.message restates both; answer in the user's language. Use the
+      returned resolved year. Invalid dates, including impossible leap days,
+      fail rather than rolling over to another date.
     parameters:
       type: object
       properties:
@@ -13,17 +15,22 @@
           type: integer
           minimum: 1
           maximum: 31
-          description: Day of month; the combination must be a real date
+          description: >-
+            Required integer day of month, 1-31; together with month and the
+            resolved year it must be a real date. No default.
         month:
           type: integer
           minimum: 1
           maximum: 12
-          description: Month number, January is 1 and December is 12
+          description: Required integer month, 1-12 (January=1, December=12); no default.
         year:
           type: integer
           minimum: 1
           maximum: 9999
-          description: Optional calendar year; omitted means the current local year
+          description: >-
+            Optional integer Gregorian year, 1-9999. Omission uses the current
+            local year of the upstream runtime, not a fixed sample year; specify
+            the intended year when it differs.
       required: [day, month]
       additionalProperties: false
   function:

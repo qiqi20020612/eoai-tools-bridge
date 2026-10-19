@@ -447,9 +447,7 @@ def test_documentation_code_blocks_match_all_static_examples():
         f"eoaic2_{case.file}.yaml" for case in CASES
     }
     for file, block in blocks:
-        assert yaml.safe_load(block) == yaml.safe_load(
-            (ROOT / "examples" / file).read_text()
-        )
+        assert block == (ROOT / "examples" / file).read_text().rstrip("\n")
 
 
 @pytest.mark.upstream

@@ -17,7 +17,7 @@ eoai_tools_bridge_amap/geocode
 
 `list_tools`、`describe_tool` 和 `check_tools` 都不进行 HTTP、密钥验证或工具调用；就绪检查也不调用参数 Schema、默认工厂或序列化钩子。没有 Key 时依然可能 `ready`，因为这只是类型/权限检查。
 
-v0.7.1 推荐使用 [高德 find_places Function](../examples/eoaic2_find_places_amap.yaml) 与 [geocode Function](../examples/eoaic2_geocode.yaml)。Google 与高德地点 Function 同名，必须二选一，并保留所选 API 的精确白名单；不会自动切换数据源。完整复制步骤见 [Functions 指南](EOAIC2_FUNCTIONS.md)。
+当前推荐使用 [高德 find_places Function](../examples/eoaic2_find_places_amap.yaml) 与 [geocode Function](../examples/eoaic2_geocode.yaml)。v0.7.2 仅完善模型可见的坐标、参数组合及候选结果说明，不改变这两个工具的实现。Google 与高德地点 Function 同名，必须二选一，并保留所选 API 的精确白名单；不会自动切换数据源。完整复制步骤见 [Functions 指南](EOAIC2_FUNCTIONS.md)。
 
 ## 参数
 
@@ -33,7 +33,7 @@ v0.7.1 推荐使用 [高德 find_places Function](../examples/eoaic2_find_places
 | `types` | 可选，1–10 个高德六位 POI 类型码，以 `\|` 分隔，例如餐饮 `050000` |
 | `limit` | 可选，整数 1–20，默认 5；只取第一页，不能当作全量数据 |
 
-无位置时使用 v5 关键词搜索；有位置时使用 v5 周边搜索。依据 [高德 POI 2.0 文档](https://lbs.amap.com/api/webservice/guide/api-advanced/newpoisearch)（页面更新 2026-07-15），仅提供关键词时距离排序不生效，所以本实现对无 `types` 的 `sort=distance` 明确拒绝，避免悄悄返回另一种排序。布尔值不能充当整数；未知字段、超长查询、错误类型或越界坐标在原生 Schema 阶段拒绝。`radius/sort` 缺少位置或距离排序缺少类型码的组合在 HTTP 前拒绝。
+无位置时使用 v5 关键词搜索；有位置时使用 v5 周边搜索。参考 [高德 POI 2.0 文档](https://lbs.amap.com/api/webservice/guide/api/newpoisearch)，本实现对无 `types` 的 `sort=distance` 明确拒绝，保留 v0.7.0 已有组合限制，避免悄悄返回另一种排序。桥接实际默认排序是 `weight`，不能用提供商 HTTP 默认值代替。布尔值不能充当整数；未知字段、超长查询、错误类型或越界坐标在原生 Schema 阶段拒绝。`radius/sort` 缺少位置或距离排序缺少类型码的组合在 HTTP 前拒绝。
 
 `geocode` 的必填 `address` 为去空白后 1–500 字符；可选 `city` 为 1–80 字符，覆盖配置城市。依据 [高德地理编码文档](https://lbs.amap.com/api/webservice/guide/api/georegeo)（页面更新 2026-02-02）访问 `/v3/geocode/geo`。保留最多 5 个候选和匹配级别，`ambiguous=true` 时需进一步选择，不把第一项自动用作路线目的地。空结果为 `results=[]`。
 
@@ -41,7 +41,7 @@ v0.7.1 推荐使用 [高德 find_places Function](../examples/eoaic2_find_places
 
 ## 结果映射
 
-通用响应的 `result` 含 `source=amap`、`coordinate_system=GCJ-02`、`results`、`returned_count` 和 `results_limited`。`returned_count` 为当前返回条数；`results_limited` 仅说明客户端因数量上限省略了本次响应里的行，不表示高德全库总量，也不保证更多页存在。`geocode` 另有 `ambiguous`，以服务实际返回的候选数判断。
+通用响应的 `result` 含 `source=amap`、`coordinate_system=GCJ-02`、`results`、`returned_count` 和 `results_limited`。`returned_count` 为客户端输出条数；`results_limited` 仅说明客户端因数量上限省略了本次响应里的行，不表示高德全库总量，也不保证更多页存在。后续通用结果预算可能继续裁剪正文，因此 `truncated=true` 时返回计数可能大于可见项数。`geocode` 的 `ambiguous=true` 依据提供商原始候选数大于 1 判断，即使裁剪后只看到一项仍需消歧；`false` 不保证唯一精确地址，须结合地址、行政区及 `match_level` 判断，空列表仍是无匹配。未实现逆地理编码、自动定位、坐标转换或路线。
 
 | 高德字段 | 桥接结果字段 | 与原版 Google 工具的差异 |
 | --- | --- | --- |

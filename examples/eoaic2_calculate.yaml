@@ -3,20 +3,21 @@
 - spec:
     name: calculate
     description: >-
-      Calculate with Tools for Assist under the bridge numeric limits. Use only
-      finite numbers, pi/E, + - * / // % ** ^ and functions sqrt, sin, cos, tan,
-      exp, log, Abs, abs, floor, ceiling, Min, Max. No code, attributes, indexing,
-      strings inside expressions or other names. Expressions allow 64 AST nodes
-      and depth 8; numbers/intermediates have absolute value at most 1e100 and,
-      unless zero, at least 1e-100; exponent absolute value is at most 32. Report
-      rejection without bypassing constraints. Requires the original active administrator.
+      Evaluate a bounded numeric expression or find the minimum, maximum or
+      arithmetic mean of supplied numbers using Tools for Assist. This is numeric
+      calculation, not equation solving, symbolic algebra, unit conversion or code
+      execution. result.value is a numeric string for expression and a number for
+      min/max/avg; results use floating-point evaluation, not guaranteed exact
+      symbolic values. Report rejected inputs without trying to bypass the limits.
     parameters:
       type: object
       properties:
         operation:
           type: string
           enum: [expression, min, max, avg]
-          description: Numeric operation; no default
+          description: >-
+            Required exact string: expression (evaluate one expression), min
+            (smallest), max (largest) or avg (arithmetic mean). No default.
         data:
           type: array
           minItems: 1
@@ -25,9 +26,15 @@
             type: string
             maxLength: 256
           description: >-
-            For expression, exactly one expression string, at most 256 characters.
-            For min/max/avg, 1-32 numeric strings, each at most 64 characters.
-            Array elements must be strings, never JSON numbers.
+            Required string array, never JSON numbers. expression needs exactly
+            one string of at most 256 characters; min/max/avg need 1-32 numeric
+            strings, at most 64 characters each. Expressions allow finite numbers,
+            pi/E, + - * / // % ** ^, and sqrt, sin, cos, tan, exp, log, Abs, abs,
+            floor, ceiling, Min, Max. Trigonometry uses radians; log takes 1-2
+            arguments, Min/Max 2-8, other functions one. No variables, code,
+            attributes, indexing or quoted strings. At most 64 AST nodes and depth
+            8; numbers/intermediates have absolute value at most 1e100 and, unless
+            zero, at least 1e-100; exponent absolute value at most 32. No default.
       required: [operation, data]
       additionalProperties: false
   function:

@@ -4,11 +4,16 @@
 - spec:
     name: find_places
     description: >-
-      Find places using Amap. Use keywords alone, or explicit/configured GCJ-02
-      coordinates for nearby search. City restricts the search. Radius/sort require
-      a location; distance sorting also requires types. Do not guess coordinates
-      or convert them implicitly. Read result.results and actual returned fields;
-      do not invent phone, hours or rating. Requires the original active administrator.
+      Find businesses or landmarks in Amap, using keyword search without a center
+      or nearby search with an explicit/configured center. Check names, addresses
+      and districts to distinguish matches. Nearby search needs real GCJ-02
+      coordinates; never guess the user's location or silently convert another
+      coordinate system. result.results is one limited first page, not all places;
+      returned_count/results_limited do not describe the total available. An empty
+      list means no matches. Coordinates and optional phone, hours, rating or
+      distance_meters appear only when supplied. Distance is provider-reported
+      meters, not route distance; hours do not establish open_now, and rating must
+      not be assumed to use Google's scale. Reuse sufficient matches instead of repeating searches.
     parameters:
       type: object
       properties:
@@ -16,39 +21,57 @@
           type: string
           minLength: 1
           maxLength: 80
-          description: Place keyword, 1-80 valid Unicode characters after trimming
+          description: >-
+            Required place name, business category or landmark keyword string,
+            1-80 valid Unicode characters after trimming. No default.
         city:
           type: string
           minLength: 1
           maxLength: 80
-          description: Optional city restriction; omission preserves the configured city
+          description: >-
+            Optional city name, city code or adcode string, 1-80 characters after
+            trimming. Overrides the configured bridge city and restricts POI search;
+            omission uses that city, or no city restriction if none is configured.
         location:
           type: string
           description: >-
-            Optional GCJ-02 longitude,latitude; at most 6 decimal places,
-            longitude -180 to 180 and latitude -90 to 90. Omission preserves the
-            configured center; with no center, use keyword search. Never infer home/device location.
+            Optional verified GCJ-02 'longitude,latitude' string, longitude first,
+            no internal spaces and at most 6 decimal places; longitude -180 to
+            180, latitude -90 to 90. For example, use an unambiguous geocode result's
+            longitude and latitude in that order. Omission uses the configured
+            center; with none configured it selects keyword search, not user location.
         radius:
           type: integer
           minimum: 1
           maximum: 50000
           default: 5000
-          description: Optional nearby radius in meters; requires a location
+          description: >-
+            Optional integer nearby radius, 1-50000 meters, default 5000. Valid
+            only with explicit location or a configured center; omit it for
+            keyword-only searches without a center.
         sort:
           type: string
           enum: [weight, distance]
           default: weight
-          description: Optional nearby sort; distance also requires types
+          description: >-
+            Optional exact string weight (relevance, default) or distance
+            (nearest first). Both require an explicit/configured center; distance
+            additionally requires types. Omit for keyword-only searches without a center.
         types:
           type: string
           pattern: '^[0-9]{6}(?:\|[0-9]{6}){0,9}$'
-          description: Optional 1-10 six-digit Amap POI codes joined by |; e.g. 050000
+          description: >-
+            Optional string of 1-10 published six-digit Amap POI category codes
+            joined by |, e.g. '050000' for dining. No default; valid for keyword
+            or nearby search, and mandatory with sort=distance. Not a category name.
         limit:
           type: integer
           minimum: 1
           maximum: 20
           default: 5
-          description: Optional first-page result limit; omitted means 5, never all places
+          description: >-
+            Optional integer maximum of 1-20 results on the first page; default
+            5. Fewer may match. Not a page number, total count or pagination request.
       required: [query]
       additionalProperties: false
   function:

@@ -1,6 +1,6 @@
 # Tools for Assist 工具兼容清单
 
-核对日期：**2026-10-19（Asia/Shanghai）**。当前版本 **v0.7.1**，继续 0.x 小版本迭代。用户已明确取消 Home Control API：EOAIC2 已有原生 HA 控制，因此 Home Control 的状态/历史、动态控制、脚本、设备上下文和计时器均从本项目后续开发与 1.0 门槛中移除。既有 EOAIC2 设备控制 Functions 继续使用原来的路径。
+核对日期：**2026-10-20（Asia/Shanghai）**。当前版本 **v0.7.2**，继续 0.x 小版本迭代。用户已明确取消 Home Control API：EOAIC2 已有原生 HA 控制，因此 Home Control 的状态/历史、动态控制、脚本、设备上下文和计时器均从本项目后续开发与 1.0 门槛中移除。既有 EOAIC2 设备控制 Functions 继续使用原来的路径。
 
 源码基准为 [Tools for Assist 1.11.0](https://github.com/skye-harris/llm_intents/tree/198e37885fe06e6452d2d6e26bc5e532b1686acc/custom_components/llm_intents)，提交 `198e37885fe06e6452d2d6e26bc5e532b1686acc`；保留原基线 `100e740b93a2a1a6d304329883937193a4571ac0` 回归。HA 源码与自动化测试基准已升级为 **2026.10.2**，提交 `8d7fd8b68677c2585be36ec86043308f403875b8`；基准升级后的 443 项回归通过。v0.6.0 初始发布时的 2026.10.0 证据保留在测试记录中；v0.6.1 在新基准下通过 473 项回归，并修复通用调用的大结果裁剪。上游更新后重新核对入口、参数及实现，固定快照不保证未来版本兼容。Tavily 的增量核对见 [1.11.0 记录](TOOLS_FOR_ASSIST_1_11_0.md)。
 
@@ -71,6 +71,8 @@ v0.5 曾提供 `HomeControl/get_device_history_context` 的审核分类。为保
 ## v0.7：高德地点与位置解析
 
 v0.7.1 仅补齐静态独立 Functions、文档与必要的验证测试，未增加工具实现或改变运行权限。12 个 API/工具组合均有独立片段（搜索另提供两个可选参数变体）；Google/高德同名地点二选一，不同时启用。具体参数、原生枚举与默认行为见 [Functions 指南](EOAIC2_FUNCTIONS.md)。
+
+v0.7.2 在同样的 12 个组合与搜索变体中仅优化模型可见描述，逐项核对调用时机、参数格式、默认行为和结果解释，不改 Schema、脚本、运行实现或权限。新增自动化冻结 v0.7.1 的非描述结构；描述优化仍须真实对话验证，不能替代下表待验收项。Google get_route 保持原样，高德路线仅在 v0.8.0 单独开发。
 
 2026-10-19 用户验收 v0.6.1 后要求继续下一版本，按此前规划启动高德地点与位置解析。同时按明确要求删除独立 `eoai_tools_bridge.search_web` 服务、旧执行链路及专用示例，统一通过 `call_tool` 执行。原版 `llm_intents/search_web`、只读审核、原生参数、原始管理员、白名单、副作用许可和 v0.6.1 的结果裁剪保留。见 [v0.7 迁移](MIGRATION_0_7.md)。
 
