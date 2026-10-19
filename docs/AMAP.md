@@ -58,7 +58,7 @@ POI 请求只选择 `business` 扩展，避免请求不需要的照片等字段�
 
 ## 请求、失败与预算
 
-地点/地址解析只使用 `https://restapi.amap.com` 的三个固定端点：`/v5/place/text`、`/v5/place/around`、`/v3/geocode/geo`；v0.8.0 路线另增加 [六个固定路线端点](AMAP_ROUTES.md#出行方式与时间映射)。Key 仅由可信配置填入请求，不接受模型提供 URL、Headers 或 Key。不跟随重定向，不重试、不缓存响应；单次 HTTP 总超时 10 秒，响应解码前按流限制 **256 KiB**。工具调用仍受既有 20 秒通用异步超时及 16 KiB 结果预算约束，沿用 v0.6.1 嵌套裁剪。
+地点/地址解析只使用 `https://restapi.amap.com` 的三个固定端点：`/v5/place/text`、`/v5/place/around`、`/v3/geocode/geo`；当前路线使用 [四个固定路线端点](AMAP_ROUTES.md#出行方式与时间映射)。Key 仅由可信配置填入请求，不接受模型提供 URL、Headers 或 Key。不跟随重定向，不重试、不缓存响应；单次 HTTP 总超时 10 秒，响应解码前按流限制 **256 KiB**。工具调用仍受既有 20 秒通用异步超时及 16 KiB 结果预算约束，沿用 v0.6.1 嵌套裁剪。
 
 缺少/未授权 Key、配额不足、HTTP 错误、网络超时、超大/无效 JSON 或缺失必要字段均使用固定错误，原始 URL、响应和异常文本不会进入桥接日志/结果。`call_tool` 保留既有错误契约：原生字段验证失败为 `invalid_args`；提供商、缺 Key 或工具内部组合检查失败为 `upstream_error`，`result=null`、`outcome_unknown=false`。原生工具内部仅返回固定类别，不回显服务端 `info`。取消直接传播，不转为成功或重试。
 

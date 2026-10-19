@@ -68,4 +68,10 @@ EOAIC2 推荐采用 [独立 search_web](../examples/eoaic2_search_web.yaml)，�
 
 在 Bridge 选项设置可选家庭地址及默认出行方式。origin 省略时用该地址，显式 origin 优先；家庭地址空缺时必须提供起点，不复用附近中心或 HA 设备位置。更新无需重建配置项，已有权限/选项仍保持原值，新增工具不会自动获权。HACS 仍只更新 Bridge，Functions 手工替换且不能重复同名。
 
-高德时间严格校验，不能套用 Google 无效/过去时间的回退行为；返回也需改为先看 result.status、ok 时读 result.route，而非 Google 的 result.result。多候选须消歧、公交坐标须有城市；未来驾车及摩托车请求的提供商权限另行确认，失败不降级。完整参数、单位、时间和联网验证差异见 [高德路线说明](AMAP_ROUTES.md)。
+高德时间严格校验，不能套用 Google 无效/过去时间的回退行为；返回也需改为先看 result.status、ok 时读 result.route，而非 Google 的 result.result。多候选须消歧、公交坐标须有城市，失败不降级。当前支持范围以 [高德路线说明](AMAP_ROUTES.md) 为准，v0.8.0 的原始范围与测试保留在历史记录中。
+
+## 从 v0.8.0 更新至 v0.8.1
+
+高德路线删除 TWO_WHEELER 摩托车及 DRIVE + departure_time 未来驾车的实际接口、解析和配置选项；仅保留即时 DRIVE、WALK、BICYCLE、TRANSIT，以及 TRANSIT + departure_time。旧版保存的 TWO_WHEELER 默认模式在集成加载时自动改为 DRIVE，只更新该项，家庭地址、附近中心、Key、默认城市、白名单、网关及副作用许可原样保留，无需重建配置项。
+
+更新并重新加载/重启后，手动替换已保存的 [高德路线 YAML](../examples/eoaic2_get_route_amap.yaml)，不要重复追加同名 get_route；HACS 不自动改写 Functions。模型或旧脚本显式传入 TWO_WHEELER 会被参数校验拒绝，非公交传入 departure_time 也失败且不发 HTTP，不会忽略时间退回即时路线。需要驾车时省略时间；需要未来公交时使用 TRANSIT。Google get_route、其他工具、四服务及既有权限/返回格式保持不变。

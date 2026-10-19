@@ -19,9 +19,7 @@ _PATHS = frozenset(
         "/v5/direction/driving",
         "/v5/direction/walking",
         "/v5/direction/bicycling",
-        "/v5/direction/motor",
         "/v3/direction/transit/integrated",
-        "/v4/etd/driving",
     }
 )
 
@@ -73,13 +71,7 @@ class AmapClient:
             raise AmapError("invalid_response") from None
         if not isinstance(data, dict):
             raise AmapError("invalid_response")
-        accepted = data.get("status") == "1"
-        if path == "/v4/etd/driving":
-            accepted = type(data.get("errcode")) in {int, str} and data["errcode"] in (
-                0,
-                "0",
-            )
-        if not accepted:
+        if data.get("status") != "1":
             # This includes invalid/unauthorized keys and exhausted quotas.
             raise AmapError("provider_rejected")
         return data

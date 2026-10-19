@@ -3,7 +3,6 @@
 import asyncio
 import json
 from copy import deepcopy
-from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -12,6 +11,7 @@ import yaml
 from homeassistant.core import Context
 from homeassistant.data_entry_flow import FlowResultType, InvalidData
 from homeassistant.helpers import llm
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from test_amap import FAKE_KEY, ORIGIN, instance
 
 from custom_components.eoai_tools_bridge.amap import (
@@ -22,13 +22,13 @@ from custom_components.eoai_tools_bridge.amap import (
     CONF_AMAP_LOCATION,
     CONF_AMAP_MODE,
 )
-from custom_components.eoai_tools_bridge.amap_client import AmapClient
+from custom_components.eoai_tools_bridge.amap_client import AmapClient, AmapError
 from custom_components.eoai_tools_bridge.amap_routes import (
-    FUTURE_DRIVING_PATH,
     ROUTE_MODES,
     ROUTE_PATHS,
 )
 from custom_components.eoai_tools_bridge.const import (
+    CONF_ALLOW_SIDE_EFFECTS,
     CONF_ALLOWED_TOOLS,
     CONF_ENABLED,
     DOMAIN,
@@ -40,7 +40,6 @@ HOME = "116.434307,39.90909"
 DESTINATION = "116.397499,39.908722"
 OTHER = "116.412422,39.908966"
 DEPARTURE = "2026-10-21T09:00:00+08:00"
-START_MS = int(datetime.fromisoformat(DEPARTURE).timestamp()) * 1000
 V5 = {
     "status": "1",
     "route": {"paths": [{"distance": "1234.5", "cost": {"duration": "600"}}]},
@@ -52,15 +51,6 @@ TRANSIT = {
 BICYCLE = {
     "status": "1",
     "route": {"paths": [{"distance": "1234.5", "duration": "600"}]},
-}
-FUTURE = {
-    "errcode": 0,
-    "data": {
-        "paths": [{"distance": 3456}],
-        "time_infos": [
-            {"starttime": START_MS, "elements": [{"pathindex": 0, "duration": 12.5}]}
-        ],
-    },
 }
 
 
@@ -193,6 +183,76 @@ async def test_omitted_mode_inherits_configuration_not_static_function_default(
     assert (await call_route(hass, admin_context))["result"]["travel_mode"] == "WALK"
 
 
+@pytest.mark.parametrize("enabled", [False, True])
+async def test_legacy_mode_upgrade_changes_only_mode_and_preserves_permissions(
+    hass, routes_entry, admin_context, aioclient_mock, enabled
+):
+    assert await hass.config_entries.async_unload(routes_entry.entry_id)
+    saved = {
+        **routes_entry.options,
+        CONF_ENABLED: enabled,
+        CONF_AMAP_MODE: "TWO_WHEELER",
+        CONF_AMAP_LOCATION: OTHER,
+        CONF_ALLOW_SIDE_EFFECTS: True,
+        CONF_ALLOWED_TOOLS: f"{AMAP_API_ID}/get_route\n{AMAP_API_ID}/geocode",
+    }
+    hass.config_entries.async_update_entry(routes_entry, options=saved)
+    assert await hass.config_entries.async_setup(routes_entry.entry_id)
+    await hass.async_block_till_done()
+    expected = {**saved, CONF_AMAP_MODE: "DRIVE"}
+    assert dict(routes_entry.options) == expected
+    flow = await hass.config_entries.options.async_init(routes_entry.entry_id)
+    marker, selector = next(
+        (key, value)
+        for key, value in flow["data_schema"].schema.items()
+        if key.schema == CONF_AMAP_MODE
+    )
+    assert marker.default() == "DRIVE"
+    assert selector.config["options"] == ["DRIVE", "WALK", "BICYCLE", "TRANSIT"]
+    aioclient_mock.get(f"{ORIGIN}{ROUTE_PATHS['DRIVE']}", json=V5)
+    response = await call_route(hass, admin_context)
+    if enabled:
+        assert response["result"]["travel_mode"] == "DRIVE"
+        assert response["result"]["origin"]["query"] == saved[CONF_AMAP_HOME]
+        assert aioclient_mock.call_count == 1
+    else:
+        assert response["error_code"] == "gateway_disabled"
+        assert aioclient_mock.call_count == 0
+    assert dict(routes_entry.options) == expected
+
+
+async def test_cached_native_api_accepts_legacy_default_but_rejects_explicit_mode(
+    hass, routes_entry, admin_context, aioclient_mock
+):
+    api = await instance(hass, admin_context)
+    hass.config_entries.async_update_entry(
+        routes_entry, options={**routes_entry.options, CONF_AMAP_MODE: "TWO_WHEELER"}
+    )
+    aioclient_mock.get(f"{ORIGIN}{ROUTE_PATHS['DRIVE']}", json=V5)
+    result = await api.async_call_tool(
+        llm.ToolInput(tool_name="get_route", tool_args={"destination": DESTINATION})
+    )
+    assert not result.error and result.data["travel_mode"] == "DRIVE"
+    rejected = await api.async_call_tool(
+        llm.ToolInput(
+            tool_name="get_route",
+            tool_args={"destination": DESTINATION, "mode": "TWO_WHEELER"},
+        )
+    )
+    assert rejected.error and rejected.data == {"error": "invalid_args"}
+    assert aioclient_mock.call_count == 1
+
+
+@pytest.mark.parametrize("path", ["/v5/direction/motor", "/v4/etd/driving"])
+async def test_removed_endpoints_are_rejected_by_the_http_client(
+    hass, aioclient_mock, path
+):
+    client = AmapClient(async_get_clientsession(hass), FAKE_KEY)
+    with pytest.raises(AmapError, match="^unsupported_endpoint$"):
+        await client._request(path, {"origin": HOME, "destination": DESTINATION})
+    assert aioclient_mock.call_count == 0
+
+
 async def test_address_resolution_preserves_endpoint_identity_and_cross_city(
     hass, routes_entry, admin_context, aioclient_mock
 ):
@@ -292,45 +352,55 @@ async def test_transit_coordinates_need_city_names_or_citycodes_not_adcodes(
     assert aioclient_mock.call_count == 0
 
 
-@pytest.mark.parametrize("mode", ["DRIVE", "TRANSIT"])
-async def test_future_departure_uses_actual_time_endpoint_units_and_timezone(
-    hass, routes_entry, admin_context, aioclient_mock, mode
+@pytest.mark.parametrize("explicit_mode", [False, True])
+async def test_future_transit_uses_actual_time_endpoint_units_and_timezone(
+    hass, routes_entry, admin_context, aioclient_mock, explicit_mode
 ):
-    path = FUTURE_DRIVING_PATH if mode == "DRIVE" else ROUTE_PATHS[mode]
-    aioclient_mock.get(f"{ORIGIN}{path}", json=FUTURE if mode == "DRIVE" else TRANSIT)
+    hass.config_entries.async_update_entry(
+        routes_entry, options={**routes_entry.options, CONF_AMAP_MODE: "TRANSIT"}
+    )
+    aioclient_mock.get(f"{ORIGIN}{ROUTE_PATHS['TRANSIT']}", json=TRANSIT)
     response = await call_route(
         hass,
         admin_context,
-        {"destination": DESTINATION, "mode": mode, "departure_time": DEPARTURE},
+        {
+            "destination": DESTINATION,
+            "departure_time": DEPARTURE,
+            **({"mode": "TRANSIT"} if explicit_mode else {}),
+        },
     )
     assert response["success"] is True
     body = response["result"]
     assert body["departure_time"] == "2026-10-21T01:00:00+00:00"
-    assert body["route"]["duration_seconds"] == (750 if mode == "DRIVE" else 1200)
-    assert body["estimated_arrival"] == (
-        "2026-10-21T01:12:30+00:00" if mode == "DRIVE" else "2026-10-21T01:20:00+00:00"
-    )
+    assert body["route"]["duration_seconds"] == 1200
+    assert body["estimated_arrival"] == "2026-10-21T01:20:00+00:00"
+    assert body["time_basis"] == "timetable"
     params = aioclient_mock.mock_calls[0][1].query
-    if mode == "DRIVE":
-        assert params["firsttime"] == str(START_MS // 1000)
-        assert params["count"] == "1"
-        assert "show_fields" not in params
-    else:
-        assert (params["date"], params["time"]) == ("2026-10-21", "09:00")
+    assert (params["date"], params["time"]) == ("2026-10-21", "09:00")
     assert aioclient_mock.call_count == 1
 
 
-@pytest.mark.parametrize("mode", ["WALK", "BICYCLE", "TWO_WHEELER"])
-async def test_timed_static_modes_fail_without_dropping_departure_time(
-    hass, routes_entry, admin_context, aioclient_mock, mode
+@pytest.mark.parametrize("mode", [None, "DRIVE", "WALK", "BICYCLE"])
+@pytest.mark.parametrize("native", [False, True])
+async def test_only_transit_accepts_departure_time_before_any_http(
+    hass, routes_entry, admin_context, aioclient_mock, mode, native
 ):
-    response = await call_route(
-        hass,
-        admin_context,
-        {"destination": DESTINATION, "mode": mode, "departure_time": DEPARTURE},
-    )
-    assert response["success"] is False
-    assert response["outcome_unknown"] is False
+    args = {
+        "destination": "需先解析的目的地",
+        "departure_time": DEPARTURE,
+        **({"mode": mode} if mode else {}),
+    }
+    if native:
+        api = await instance(hass, admin_context)
+        response = await api.async_call_tool(
+            llm.ToolInput(tool_name="get_route", tool_args=args)
+        )
+        assert response.error
+        assert response.data == {"error": "departure_time_unsupported"}
+    else:
+        response = await call_route(hass, admin_context, args)
+        assert response["success"] is False
+        assert response["outcome_unknown"] is False
     assert aioclient_mock.call_count == 0
 
 
@@ -342,7 +412,9 @@ async def test_past_or_beyond_seven_days_is_not_replaced_by_now(
 ):
     assert not (
         await call_route(
-            hass, admin_context, {"destination": DESTINATION, "departure_time": value}
+            hass,
+            admin_context,
+            {"destination": DESTINATION, "mode": "TRANSIT", "departure_time": value},
         )
     )["success"]
     assert aioclient_mock.call_count == 0
@@ -367,6 +439,7 @@ async def test_past_or_beyond_seven_days_is_not_replaced_by_now(
         {"destination": DESTINATION, "origin": None},
         {"destination": DESTINATION, "origin": ""},
         {"destination": DESTINATION, "mode": "ELECTRIC_BICYCLE"},
+        {"destination": DESTINATION, "mode": "TWO_WHEELER"},
         {"destination": DESTINATION, "departure_time": "tomorrow"},
         {"destination": DESTINATION, "departure_time": "2026-10-21T09:00:00"},
         {"destination": DESTINATION, "departure_time": 123},
@@ -545,33 +618,6 @@ async def test_legitimate_no_routes_are_explicit_and_have_no_invented_duration(
     assert "duration" not in json.dumps(response)
 
 
-async def test_future_driving_missing_or_wrong_time_does_not_use_current_route(
-    hass, routes_entry, admin_context, aioclient_mock
-):
-    body = deepcopy(FUTURE)
-    body["data"]["time_infos"][0]["starttime"] += 1000
-    aioclient_mock.get(f"{ORIGIN}{FUTURE_DRIVING_PATH}", json=body)
-    response = await call_route(
-        hass, admin_context, {"destination": DESTINATION, "departure_time": DEPARTURE}
-    )
-    assert response["error_code"] == "upstream_error"
-    assert aioclient_mock.call_count == 1
-
-
-@pytest.mark.parametrize("errcode", [False, 0.0, 1, "10044", None])
-async def test_future_driving_errors_and_bad_statuses_never_fallback(
-    hass, routes_entry, admin_context, aioclient_mock, errcode
-):
-    data = {**deepcopy(FUTURE), "errcode": errcode, "errmsg": FAKE_KEY}
-    aioclient_mock.get(f"{ORIGIN}{FUTURE_DRIVING_PATH}", json=data)
-    response = await call_route(
-        hass, admin_context, {"destination": DESTINATION, "departure_time": DEPARTURE}
-    )
-    assert response["error_code"] == "upstream_error"
-    assert FAKE_KEY not in json.dumps(response)
-    assert aioclient_mock.call_count == 1
-
-
 @pytest.mark.parametrize("body", [V5, BICYCLE])
 async def test_bicycle_accepts_documented_cost_or_live_top_level_duration(
     hass, routes_entry, admin_context, aioclient_mock, body
@@ -662,6 +708,7 @@ async def test_route_metadata_performs_no_http_or_parameter_execution_and_hides_
         (CONF_AMAP_HOME, "181,30"),
         (CONF_AMAP_HOME, "字" * 501),
         (CONF_AMAP_MODE, "CAR"),
+        (CONF_AMAP_MODE, "TWO_WHEELER"),
     ],
 )
 async def test_bad_home_and_route_mode_options_are_not_saved(

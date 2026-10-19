@@ -83,6 +83,8 @@ def normalize_amap_options(options: dict[str, Any]) -> dict[str, str]:
         values[field] = value
     if CONF_AMAP_MODE in options:
         mode = options[CONF_AMAP_MODE]
+        if mode == "TWO_WHEELER":  # Saved v0.8.0 configuration only.
+            mode = "DRIVE"
         if not isinstance(mode, str) or mode not in ROUTE_MODES:
             raise vol.Invalid("Expected a supported route mode")
         values[CONF_AMAP_MODE] = mode
@@ -160,10 +162,10 @@ class AmapTool(llm.Tool):
                 "Estimate an Amap route from an explicit origin or configured home. "
                 "Endpoints accept addresses or verified GCJ-02 longitude,latitude. "
                 "Never infer user/device location; multiple address candidates need "
-                "clarification. DRIVE/WALK/BICYCLE/TRANSIT/TWO_WHEELER map to distinct "
-                "Amap endpoints; motorcycle and future driving need extra permission. "
-                "Only DRIVE/TRANSIT support a future timezone-aware departure_time "
-                "within 7 days. Read status before route; times are estimates."
+                "clarification. DRIVE/WALK/BICYCLE/TRANSIT map to distinct "
+                "Amap endpoints. Only TRANSIT supports departure_time: a future "
+                "timezone-aware time within 7 days. Read status before route; "
+                "times are estimates."
             )
             self.parameters = vol.Schema(
                 {

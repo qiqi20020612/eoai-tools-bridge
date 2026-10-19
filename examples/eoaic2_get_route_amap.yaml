@@ -12,9 +12,9 @@
       contain no usable route. Resolve the gap instead of choosing the first
       candidate. An ok route provides numeric meters/seconds plus formatted
       distance/duration, not turn-by-turn navigation or guaranteed arrival.
-      Future driving and motorcycle routing require extra provider authorization;
-      failures do not fall back to another time, mode or Google. result.departure_time
-      is the effective UTC time used when explicitly requested.
+      Only TRANSIT accepts a future departure time; other modes estimate immediate
+      departure. Failures do not fall back to another time, mode or Google.
+      result.departure_time is the effective UTC time used when explicitly requested.
     parameters:
       type: object
       properties:
@@ -38,22 +38,21 @@
             send an empty/null value, here/home, or guessed live coordinates.
         mode:
           type: string
-          enum: [DRIVE, WALK, BICYCLE, TRANSIT, TWO_WHEELER]
+          enum: [DRIVE, WALK, BICYCLE, TRANSIT]
           description: >-
-            Optional exact string DRIVE, WALK, BICYCLE, TRANSIT or TWO_WHEELER
-            (motorcycle, not electric bicycle). Omitted uses the configured Amap
-            route mode, or DRIVE if unset. Motorcycle service needs separate
-            provider authorization; modes are never silently substituted.
+            Optional exact string DRIVE, WALK, BICYCLE or TRANSIT. Omitted uses
+            the configured Amap route mode, or DRIVE if unset. Only TRANSIT
+            allows departure_time; modes are never silently substituted.
         departure_time:
           type: string
           minLength: 1
           maxLength: 500
           description: >-
             Optional future ISO 8601 string with explicit timezone, e.g.
-            '2026-10-21T09:00:00+08:00', within 7 days. Only DRIVE/TRANSIT support
+            '2026-10-21T09:00:00+08:00', within 7 days. Only TRANSIT supports
             this field; omit for immediate departure. Invalid, naive or past
-            values fail. Driving uses whole seconds; transit uses whole minutes
-            in Asia/Shanghai. This is departure, not an arrival deadline.
+            values fail. Transit uses whole minutes in Asia/Shanghai.
+            This is departure, not an arrival deadline.
         origin_city:
           type: string
           minLength: 1

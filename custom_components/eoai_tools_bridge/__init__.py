@@ -11,7 +11,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import llm
 from homeassistant.helpers.typing import ConfigType
 
-from .amap import AmapAPI
+from .amap import CONF_AMAP_MODE, AmapAPI
 from .catalog import LIST_TOOLS_SCHEMA, async_list_tools, catalog_response
 from .const import (
     DOMAIN,
@@ -91,6 +91,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Load the bridge even if Tools for Assist is not available yet."""
+    if entry.options.get(CONF_AMAP_MODE) == "TWO_WHEELER":
+        hass.config_entries.async_update_entry(
+            entry, options={**entry.options, CONF_AMAP_MODE: "DRIVE"}
+        )
     entry.async_on_unload(llm.async_register_api(hass, AmapAPI(hass, entry)))
     return True
 

@@ -1,6 +1,6 @@
 # EOAIC2 Tools Bridge
 
-让 EOAIC2 通过 Home Assistant 公开 LLM API 使用 Tools for Assist 的搜索、天气、地点/路线、计算器、实用工具和媒体播放，并提供独立的高德地点、地址解析与路线工具。当前版本 **v0.8.0**，HA 自动化测试基准 **2026.10.2**，Tools for Assist 固定核对版本 **1.11.0**。
+让 EOAIC2 通过 Home Assistant 公开 LLM API 使用 Tools for Assist 的搜索、天气、地点/路线、计算器、实用工具和媒体播放，并提供独立的高德地点、地址解析与路线工具。当前版本 **v0.8.1**，HA 自动化测试基准 **2026.10.2**，Tools for Assist 固定核对版本 **1.11.0**。
 
 **v0.7.0 接口变更：独立的 `eoai_tools_bridge.search_web` 已移除，所有工具统一经 `call_tool` 执行。** Tools for Assist 的 `llm_intents/search_web` 继续支持。升级须替换旧搜索动作/Functions、明确授权搜索并改读 `result.results`，详见 [迁移说明](docs/MIGRATION_0_7.md)。既有白名单及副作用许可不会自动扩大。
 
@@ -122,11 +122,11 @@ eoai_tools_bridge_amap/geocode
 
 v0.8.0 新增 `eoai_tools_bridge_amap/get_route`。在 Bridge 选项中可填**高德家庭地址**（或可信 GCJ-02 坐标）和**默认出行方式**。调用时 destination 必填；**省略 origin 用此家庭地址，显式 origin 覆盖它**，没有配置家庭地址也可通过 origin 查询两地之间的路线。家庭地址与附近搜索中心独立，不读取 Google 配置或 HA 实时位置。
 
-- 支持驾车、步行、自行车、公交与摩托车的独立接口；地址先用高德解析，多候选时返回候选供消歧，不取第一项继续算路。
-- 仅 DRIVE/TRANSIT 接受带明确时区、未来 7 天内的 departure_time；其他模式、历史/无效时间拒绝，不替换为当前路线。未来驾车及摩托车接口需要额外提供商权限，本次测试 Key 的请求被提供商拒绝，不降级为其他方式。
+- 支持即时驾车、步行、自行车和公交的独立接口；地址先用高德解析，多候选时返回候选供消歧，不取第一项继续算路。
+- 仅 TRANSIT 接受带明确时区、未来 7 天内的 departure_time；其他模式、历史/无效时间拒绝，不替换为当前路线。v0.8.1 已删除摩托车及未来驾车实现；旧配置 TWO_WHEELER 加载时安全回退为 DRIVE，家庭地址、附近中心和既有权限保持原值，显式调用旧模式仍拒绝。
 - 先判断顶层 success，再读 result.status；只有 ok 才有 result.route。距离/耗时为米/秒，并含可读文本；无匹配、缺公交城市、候选歧义或无路线不会编造零耗时。20 秒总预算内每次新 HTTP 前重查权限/配置，不重试或缓存。
 
-按 [路线配置与迁移说明](docs/AMAP_ROUTES.md) 添加精确白名单并替换同名 Function；HACS 不会自动更新已保存的 Functions。公共坐标的驾车/步行/骑行/公交及未来公交已独立联网成功，真实 HA/模型/升级与额外权限端点的成功验收分开记录。
+按 [路线配置与迁移说明](docs/AMAP_ROUTES.md) 添加精确白名单并替换同名 Function；HACS 不会自动更新已保存的 Functions。公共坐标的驾车/步行/骑行/公交及未来公交已在 v0.8.0 独立联网成功，真实 HA/模型/升级验收分开记录。
 
 ## 通用调用、安全与结果
 
@@ -186,6 +186,6 @@ uv run --no-sync python scripts/build_release.py
 
 开发/CI 固定 HA Core 2026.10.2、配套测试插件 0.13.373。测试下载并校验固定 SHA-256 的 EOAIC2 4 个文件与 Tools for Assist 两套 20/22 个文件，仅在忽略缓存中使用，不打包。pytest 禁止网络，使用真实 HA 注册/认证/Schema/Script 及未修改的原版工具代码，提供商与设备使用模拟后端。源码依据见 [UPSTREAM.md](docs/UPSTREAM.md)。
 
-用户报告 v0.7.2 总体验收通过，未补写逐项提供商或物理设备证据。各版本自动化、独立高德 HTTP 验证与真实用户环境验收分开记录在 [TESTING.md](docs/TESTING.md)。v0.8.0 交付高德路线，后续真实联调、额外接口权限和未完成门槛继续按既定 0.x 路线推进，不直接跳至 1.0。
+用户报告 v0.7.2 总体验收通过，未补写逐项提供商或物理设备证据。各版本自动化、独立高德 HTTP 验证与真实用户环境验收分开记录在 [TESTING.md](docs/TESTING.md)。v0.8.1 收窄高德路线能力，已删除的两项不再作为后续验收门槛；真实联调和其他未完成门槛继续按既定 0.x 路线推进，不直接跳至 1.0。
 
 [版本记录](docs/CHANGELOG.md) · [v0.7 迁移](docs/MIGRATION_0_7.md) · [许可](LICENSE)

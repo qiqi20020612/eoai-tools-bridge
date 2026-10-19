@@ -1,4 +1,4 @@
-# 高德路线查询（v0.8.0）
+# 高德路线查询（v0.8.1）
 
 新工具为 **`eoai_tools_bridge_amap/get_route`**，与原 Google `llm_intents/get_route` 保持独立身份。通过现有 `call_tool` 执行，只读但仍要求精确白名单、网关开启和原始有效管理员 Context；不会自动授权、读上游私有配置或接管原 Google 工具。
 
@@ -12,6 +12,8 @@
 
 家庭地址可填与 Tools for Assist 相同的实际地址，但这是 Bridge 自己的配置，不自动读取/迁移 Google Routes 的设置。保存/清空家庭地址、调整默认出行方式均不改变已有白名单、网关和副作用许可。旧配置项版本仍为 1，无需删除重建；新增工具必须另行明确授权。
 
+v0.8.1 删除高德摩托车及未来驾车功能。旧版保存的 TWO_WHEELER 默认模式在加载时仅改为 DRIVE，家庭地址、附近中心、Key、城市和全部权限原样保留。显式 mode=TWO_WHEELER 或非 TRANSIT 的 departure_time 会失败，不发送 HTTP。升级后手动替换高德路线 YAML；Google 工具及其参数行为不变。
+
 ```text
 eoai_tools_bridge_amap/get_route
 ```
@@ -24,8 +26,8 @@ eoai_tools_bridge_amap/get_route
 | --- | --- |
 | destination | 必填，去首尾空白后 1–500 个有效 Unicode 字符：地址/地标名，或可信 GCJ-02 `经度,纬度` |
 | origin | 可选，同 destination 格式；省略用已配置家庭地址，显式值优先。空值/null/“这里、我家、home”等相对词不等于省略 |
-| mode | 可选，DRIVE/WALK/BICYCLE/TRANSIT/TWO_WHEELER；省略用 Bridge 配置，未配则 DRIVE，不写死覆盖用户配置 |
-| departure_time | 可选，带明确时区的 ISO 8601 出发时间，必须在当前之后、7 天以内；仅 DRIVE/TRANSIT 支持。省略即当前出发；不接受历史时间、无时区或无效文本 |
+| mode | 可选，DRIVE/WALK/BICYCLE/TRANSIT；省略用 Bridge 配置，未配则 DRIVE，不写死覆盖用户配置 |
+| departure_time | 可选，带明确时区的 ISO 8601 出发时间，必须在当前之后、7 天以内；仅 TRANSIT 支持。省略即当前出发；不接受历史时间、无时区或无效文本 |
 | origin_city | 可选，1–80 字符的起点城市名/citycode，用于地址解析提示；未给时继承 Bridge 默认城市。TRANSIT 需要解析得到的城市或明确提示值 |
 | destination_city | 可选，目的地城市名/citycode，格式/默认同上；跨城时单独指定，不能猜为起点城市 |
 
@@ -39,20 +41,18 @@ GCJ-02 坐标必须经度在前、英文逗号分隔、内部无空格、小数�
 
 ## 出行方式与时间映射
 
-基于 [高德路径规划 2.0](https://lbs.amap.com/api/webservice/guide/api/newroute)、[公交 v3](https://lbs.amap.com/api/webservice/guide/api/direction)、[未来驾车](https://lbs.amap.com/api/webservice/guide/api-advanced/advanced-path) 与 [摩托车接口](https://lbs.amap.com/api/logistic-service/guide/cycling-service/direction-motor) 核对，2026-10-20：
+当前实现使用 [高德路径规划 2.0](https://lbs.amap.com/api/webservice/guide/api/newroute) 和 [公交 v3](https://lbs.amap.com/api/webservice/guide/api/direction)，映射如下：
 
 | 模型 mode/时间 | 实际固定端点 | 说明 |
 | --- | --- | --- |
-| DRIVE，当前出发 | /v5/direction/driving | 推荐策略 32，show_fields=cost，使用服务返回耗时 |
-| DRIVE，明确未来时间 | /v4/etd/driving | firsttime 为秒时间戳，只请求一个时间点；高级服务需要额外接口权限，不退回当前路线 |
+| DRIVE，当前出发 | /v5/direction/driving | 推荐策略 32，show_fields=cost，使用服务返回耗时；传 departure_time 明确失败 |
 | WALK | /v5/direction/walking | 无指定时间能力；传 departure_time 明确失败 |
 | BICYCLE | /v5/direction/bicycling | 无指定时间能力；兼容真实 path.duration 和文档 cost.duration 结构 |
 | TRANSIT，当前/未来 | /v3/direction/transit/integrated | 分别传 city/cityd；指定时间转换为 Asia/Shanghai 日期和小时:分钟，7 天为本桥接限制 |
-| TWO_WHEELER | /v5/direction/motor | 摩托车接口，需要额外接口权限；不改用电动自行车接口，不支持 departure_time |
 
 Google 的 mode 名称保留方便理解，但每种语义按高德实际接口处理，不能认为提供商能力完全等价。未实现电动车、途经点、任意策略、实时定位或导航逐步指令。参数/接口错误、无权限、配额和网络失败不会触发另一提供商、模式或时间的回退。
 
-与 Google 不同，高德无效、无时区或过去的显式时间会失败，不能悄悄变成“现在”；即刻出发应省略该字段。驾车精确到整秒，公交精确到整分钟；返回的 departure_time 是实际用于请求的 UTC ISO 时间，estimated_arrival 也是带 UTC 偏移的估算值。公交时间按中国时区发给接口，与用户所在 HA 时区无关。超时或等待地址解析导致已过出发时间时也会拒绝。
+与 Google 不同，高德无效、无时区或过去的显式时间会失败，不能悄悄变成“现在”；即刻出发应省略该字段。指定时间仅限公交，精确到整分钟；返回的 departure_time 是实际用于请求的 UTC ISO 时间，estimated_arrival 也是带 UTC 偏移的估算值。公交时间按中国时区发给接口，与用户所在 HA 时区无关。超时或等待地址解析导致已过出发时间时也会拒绝。
 
 ## 返回语义
 
@@ -86,14 +86,14 @@ ok 示例正文（外层仍为原 call_tool 信封）：
 }
 ```
 
-示例省略端点信息，仅展示字段含义；不能把当次测试数值当作当前路线。origin_source 是 configured_home 或 argument。数值距离/耗时始终为米/秒，格式化距离为米/千米，不继承 Google 的英制输出。只选择提供商首条路线，alternatives_available 仅表示本次响应是否还有其他条目，不代表已比较最优。未来驾车原生 duration 单位是分钟，转换为秒前核对返回时间点和 pathindex，不能当成 v5 的秒值。
+示例省略端点信息，仅展示字段含义；不能把当次测试数值当作当前路线。origin_source 是 configured_home 或 argument。数值距离/耗时始终为米/秒，格式化距离为米/千米，不继承 Google 的英制输出。只选择提供商首条路线，alternatives_available 仅表示本次响应是否还有其他条目，不代表已比较最优。
 
-time_basis 分别为 current_traffic_estimate、future_traffic_estimate、timetable 或 untimed_estimate；不输出虚构的无拥堵时间、营业状态或准点保证。返回不含原始响应、导航指令、Key 或上游错误原文。沿用 v0.6.1 的预算/嵌套裁剪，truncated=true 时仍需按可见内容解释。
+time_basis 分别为 current_traffic_estimate、timetable 或 untimed_estimate；不输出虚构的无拥堵时间、营业状态或准点保证。返回不含原始响应、导航指令、Key 或上游错误原文。沿用 v0.6.1 的预算/嵌套裁剪，truncated=true 时仍需按可见内容解释。
 
 ## 权限、预算与验证
 
 每个新 HTTP 请求前及返回前重新核对原始管理员、白名单/网关和配置快照；解析期间撤权或改 Key/家庭地址后，不继续请求或交付旧结果。原生 API 直接调用同样受保护。整个路线工具有 20 秒异步总预算，每个 HTTP 仍为 10 秒、原始响应 256 KiB、禁止重定向/重试/缓存；只允许固定 restapi.amap.com 端点，不接受模型 URL/Headers/Key。获取 Schema、目录或就绪检查不请求后端，不验证接口权限或密钥。
 
-自动化使用真实 HA 与原版 EOAIC2 ScriptFunction、模拟 HTTP，覆盖起点优先级、独立默认、各模式/时间/单位、地址消歧、错误/取消/预算、权限中途变化及升级。2026-10-20 的独立公共坐标联网验证：当前驾车、步行、骑行、公交及未来公交返回有效距离/耗时；摩托车和未来驾车返回提供商拒绝，没有降级。拒绝未记录提供商原文，不据此断言具体是权限或配额；这两个端点的真实成功仍待有相应授权的环境验证。
+自动化使用真实 HA 与原版 EOAIC2 ScriptFunction、模拟 HTTP，覆盖起点优先级、独立默认、四种模式/公交时间/单位、地址消歧、错误/取消/预算、权限中途变化及旧配置升级。v0.8.0 的独立公共坐标联网验证中，当前驾车、步行、骑行、公交及未来公交返回有效距离/耗时；v0.8.1 未新增联网验证。已移除能力不再列入后续验收门槛，历史结果仍按原版本记录。
 
 真实 HTTP 不等于用户 HA 安装、默认家庭地址、实际模型调用、HACS 升级或全部模式验收。完整证据与后续门槛见 [TESTING.md](TESTING.md) 和 [兼容清单](TOOLS_COMPATIBILITY.md)。

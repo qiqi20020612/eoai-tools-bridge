@@ -1,4 +1,4 @@
-# EOAIC2 独立 Functions（v0.8.0）
+# EOAIC2 独立 Functions（v0.8.1）
 
 推荐让模型直接看到每个工具，而不是通过 call_allowed_tool 再拼接工具身份。本文覆盖当前 **13 个 API/工具组合**：10 个 Tools for Assist 工具与高德 find_places、geocode、get_route；提供 13 份主示例及 2 份搜索参数变体，都是静态、完整、可直接复制的 YAML，不需要生成器。
 
@@ -16,6 +16,8 @@
 清单有 13 个工具组合，因为地点和路线各有一组同名供应商互斥，一次最多启用其中 **11 个独立执行 Function**，另可选元数据辅助函数。HACS 独立更新 Bridge；不会自动修改你保存在 EOAIC2 中的 Functions。模型是否正确选工具仍需在真实对话中验收。
 
 v0.7.2 完善的 14 份既有工具说明、原生参数和脚本继续保留；v0.8.0 新增高德 get_route，支持家庭地址默认起点及模型显式起点。工具 description 说明调用时机、边界和结果，参数 description 说明格式、枚举、默认值与组合限制；不需要改全局提示词。更新 Bridge 后，仍须手动替换所选完整列表项。
+
+v0.8.1 高德路线只保留 DRIVE/WALK/BICYCLE/TRANSIT，departure_time 仅限公交。请替换已保存的高德路线完整列表项；旧默认模式 TWO_WHEELER 在集成加载时回退 DRIVE，其他配置与权限保留。Google 路线 YAML 与运行行为不变。
 
 | 工具 | 固定组合 | 必填 | 可选/默认 |
 | --- | --- | --- | --- |
@@ -44,7 +46,7 @@ v0.7.2 完善的 14 份既有工具说明、原生参数和脚本继续保留；
 | 高德 find_places | 显式/配置中心决定关键词或附近查询；city 继承桥接配置，无配置则不限制城市。附近中心必须为可信 GCJ-02，经度在前；radius/sort 需要中心，distance 还需要 types | 默认第一页最多 5 项、可设 1–20。results_limited 只描述当前响应的数量裁剪；不是全库总数或更多页保证。距离为服务端米数字符串；营业时间文本不等于 open_now，评分不套用 Google 口径 |
 | geocode | 用完整地址及已知城市消歧；city 是查询提示，不承诺 POI 的严格过滤语义 | result.results 最多 5 个 GCJ-02 候选，location 含 longitude/latitude，转为附近 location 字符串时按经度,纬度。ambiguous=true 表示提供商返回多个候选，裁剪后仍须消歧；false 不等于精确匹配，空列表表示无匹配 |
 | Google get_route | Google 路线固定从 Tools for Assist 配置起点出发；上游会解析目的地，无需总是先查地点。mode 省略继承配置，未配置 DRIVE；时间省略/无效按现在，过去时间改为现在后 10 秒 | result.result 为路线对象或无路线消息；检查返回的目的地是否正确。距离带单位，duration/estimated_arrival 是估算值，不能保证准点。departure_time 是出发时间，不是期望到达时间；不能更改起点或查询高德路线 |
-| 高德 get_route | 默认用 Bridge 家庭地址，显式 origin 覆盖；地址或可信 GCJ-02 均可。模式继承 Bridge 配置。仅 DRIVE/TRANSIT 可指定未来 7 天内带时区的出发时间，其他组合明确拒绝 | 先看 result.status，ok 才读 result.route；多候选先消歧，无路线/无地址/缺公交城市均不虚构距离。米/秒数值与估算时间；未来驾车和摩托车须额外接口权限。详见 [路线说明](AMAP_ROUTES.md) |
+| 高德 get_route | 默认用 Bridge 家庭地址，显式 origin 覆盖；地址或可信 GCJ-02 均可。DRIVE/WALK/BICYCLE/TRANSIT 继承 Bridge 配置；仅 TRANSIT 可指定未来 7 天内带时区的出发时间，其他组合明确拒绝 | 先看 result.status，ok 才读 result.route；多候选先消歧，无路线/无地址/缺公交城市均不虚构距离。返回米/秒数值与估算时间。详见 [路线说明](AMAP_ROUTES.md) |
 | search_wikipedia | 固定英文维基百科；中文问题优先转为英文主题词，回答仍用用户语言 | result.results 为标题和摘要，无全文/URL，条数由上游配置（默认 1）；无文章消息只说明本次词未匹配，不证明主题不存在 |
 | search_youtube | 根据用户要一个视频还是多个选项决定 num_results（1–25，省略 1） | result.results 返回视频资料与链接，不返回完整内容或保证可播放；不足时可增数量/改查询补充，已有足够相关结果则不重复；仅搜索不播放 |
 | get_weather_forecast | 只查询上游已配天气实体对应位置；tonight 用 today，星期枚举含当天，week 请求可用的日预报覆盖 | result 直接是预报文本；日/小时粒度和可用天数由实体决定，不保证满七天，不支持任意城市/历史天气，不推断缺失单位或气象值 |
@@ -879,7 +881,7 @@ address 1–500 字符必填，city 1–80 字符可选，省略继承配置城�
 
 与上方 Google 版本同名，只能启用其中一份。新身份为 eoai_tools_bridge_amap/get_route；origin 省略使用 Bridge 自己配置的家庭地址，显式起点覆盖它，不使用附近搜索中心或 HA 实时位置。默认 mode 也来自 Bridge 配置。地址多候选先消歧；缺少公交城市、无匹配或无路线时按 status 处理。
 
-仅 DRIVE/TRANSIT 接受带时区的未来出发时间（桥接限定 7 天），不支持的模式/时间组合拒绝，不改为现在。未来驾车和摩托车服务需额外授权，失败不降级。两种提供商的默认时间处理及返回结构不同，详见 [高德路线完整说明](AMAP_ROUTES.md)。
+高德只支持 DRIVE/WALK/BICYCLE/TRANSIT；仅 TRANSIT 接受带时区的未来出发时间（桥接限定 7 天），不支持的模式/时间组合拒绝，不改为现在。两种提供商的默认时间处理及返回结构不同，详见 [高德路线完整说明](AMAP_ROUTES.md)。
 
 文件：[eoaic2_get_route_amap.yaml](../examples/eoaic2_get_route_amap.yaml)。
 
@@ -899,9 +901,9 @@ address 1–500 字符必填，city 1–80 字符可选，省略继承配置城�
       contain no usable route. Resolve the gap instead of choosing the first
       candidate. An ok route provides numeric meters/seconds plus formatted
       distance/duration, not turn-by-turn navigation or guaranteed arrival.
-      Future driving and motorcycle routing require extra provider authorization;
-      failures do not fall back to another time, mode or Google. result.departure_time
-      is the effective UTC time used when explicitly requested.
+      Only TRANSIT accepts a future departure time; other modes estimate immediate
+      departure. Failures do not fall back to another time, mode or Google.
+      result.departure_time is the effective UTC time used when explicitly requested.
     parameters:
       type: object
       properties:
@@ -925,22 +927,21 @@ address 1–500 字符必填，city 1–80 字符可选，省略继承配置城�
             send an empty/null value, here/home, or guessed live coordinates.
         mode:
           type: string
-          enum: [DRIVE, WALK, BICYCLE, TRANSIT, TWO_WHEELER]
+          enum: [DRIVE, WALK, BICYCLE, TRANSIT]
           description: >-
-            Optional exact string DRIVE, WALK, BICYCLE, TRANSIT or TWO_WHEELER
-            (motorcycle, not electric bicycle). Omitted uses the configured Amap
-            route mode, or DRIVE if unset. Motorcycle service needs separate
-            provider authorization; modes are never silently substituted.
+            Optional exact string DRIVE, WALK, BICYCLE or TRANSIT. Omitted uses
+            the configured Amap route mode, or DRIVE if unset. Only TRANSIT
+            allows departure_time; modes are never silently substituted.
         departure_time:
           type: string
           minLength: 1
           maxLength: 500
           description: >-
             Optional future ISO 8601 string with explicit timezone, e.g.
-            '2026-10-21T09:00:00+08:00', within 7 days. Only DRIVE/TRANSIT support
+            '2026-10-21T09:00:00+08:00', within 7 days. Only TRANSIT supports
             this field; omit for immediate departure. Invalid, naive or past
-            values fail. Driving uses whole seconds; transit uses whole minutes
-            in Asia/Shanghai. This is departure, not an arrival deadline.
+            values fail. Transit uses whole minutes in Asia/Shanghai.
+            This is departure, not an arrival deadline.
         origin_city:
           type: string
           minLength: 1

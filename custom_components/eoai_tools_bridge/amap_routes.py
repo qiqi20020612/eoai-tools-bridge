@@ -12,15 +12,13 @@ import probatio as vol
 from .amap_client import AmapClient, AmapError, validate_location
 from .validation import validate_query
 
-ROUTE_MODES = ("DRIVE", "WALK", "BICYCLE", "TRANSIT", "TWO_WHEELER")
+ROUTE_MODES = ("DRIVE", "WALK", "BICYCLE", "TRANSIT")
 ROUTE_PATHS = {
     "DRIVE": "/v5/direction/driving",
     "WALK": "/v5/direction/walking",
     "BICYCLE": "/v5/direction/bicycling",
     "TRANSIT": "/v3/direction/transit/integrated",
-    "TWO_WHEELER": "/v5/direction/motor",
 }
-FUTURE_DRIVING_PATH = "/v4/etd/driving"
 _CHINA = ZoneInfo("Asia/Shanghai")
 _NUMERIC_COORDINATES = re.compile(r"[0-9+\-.eEnNaAiIfF,;|\s]+\Z", re.ASCII)
 _RELATIVE = frozenset(
@@ -144,11 +142,9 @@ class AmapRoutes:
         departure = None
         if departure_time is not None:
             departure = datetime.fromisoformat(departure_time).astimezone(UTC)
-            if mode not in {"DRIVE", "TRANSIT"}:
+            if mode != "TRANSIT":
                 raise AmapError("departure_time_unsupported")
-            departure = departure.replace(microsecond=0)
-            if mode == "TRANSIT":
-                departure = departure.replace(second=0)
+            departure = departure.replace(second=0, microsecond=0)
             self._validate_future(departure)
         result: dict[str, Any] = {
             "source": "amap",
@@ -190,31 +186,17 @@ class AmapRoutes:
             params["show_fields"] = "cost"
             if mode == "DRIVE":
                 params["strategy"] = 32  # Amap default recommendation with traffic.
-        if departure and mode == "DRIVE":
-            path = FUTURE_DRIVING_PATH
-            params = {
-                "origin": params["origin"],
-                "destination": params["destination"],
-                "firsttime": int(departure.timestamp()),
-                "interval": 60,
-                "count": 1,
-                "strategy": 1,
-            }
         if departure:
             self._validate_future(departure)
         await self._check()
         data = await self._client._request(path, params)
-        route, alternatives = self._parse(
-            data, mode, departure=departure if path == FUTURE_DRIVING_PATH else None
-        )
+        route, alternatives = self._parse(data, mode)
         result.update(
             status="ok" if route else "no_route",
             route=route,
             alternatives_available=alternatives,
             time_basis=(
-                "future_traffic_estimate"
-                if departure and mode == "DRIVE"
-                else "timetable"
+                "timetable"
                 if mode == "TRANSIT"
                 else "current_traffic_estimate"
                 if mode == "DRIVE"
@@ -236,10 +218,8 @@ class AmapRoutes:
             raise AmapError("departure_time_out_of_range")
 
     @staticmethod
-    def _parse(
-        data: dict, mode: str, *, departure: datetime | None
-    ) -> tuple[dict | None, bool]:
-        parent = data.get("data" if departure else "route")
+    def _parse(data: dict, mode: str) -> tuple[dict | None, bool]:
+        parent = data.get("route")
         if not isinstance(parent, dict):
             raise AmapError("invalid_response")
         paths = parent.get("transits" if mode == "TRANSIT" else "paths")
@@ -253,28 +233,7 @@ class AmapRoutes:
         if not isinstance(path, dict):
             raise AmapError("invalid_response")
         distance = _measure(path.get("distance"))
-        if departure:
-            infos = parent.get("time_infos")
-            if not isinstance(infos, list) or len(infos) != 1:
-                raise AmapError("invalid_response")
-            info = infos[0]
-            start = info.get("starttime") if isinstance(info, dict) else None
-            if type(start) not in {str, int} or str(start) != str(
-                int(departure.timestamp()) * 1000
-            ):
-                raise AmapError("invalid_response")
-            elements = info.get("elements") if isinstance(info, dict) else None
-            if not isinstance(elements, list):
-                raise AmapError("invalid_response")
-            matching = [
-                e
-                for e in elements
-                if isinstance(e, dict) and str(e.get("pathindex")) == "0"
-            ]
-            if len(matching) != 1:
-                raise AmapError("invalid_response")
-            seconds = _measure(matching[0].get("duration")) * 60  # v4 ETD: minutes.
-        elif mode == "TRANSIT":
+        if mode == "TRANSIT":
             seconds = _measure(path.get("duration"))
         elif mode == "BICYCLE" and "duration" in path:
             # The live v5 bicycle API returns duration here despite show_fields.

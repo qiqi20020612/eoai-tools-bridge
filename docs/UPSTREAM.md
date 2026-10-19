@@ -149,6 +149,8 @@ Key 为可选可信配置，不在模型参数中出现；仅固定 HTTPS 端点
 
 ## v0.8.0：高德路线、家庭地址与显式起点
 
+以下接口核对和联网结果为 v0.8.0 的历史记录；v0.8.1 按用户要求删除摩托车及未来驾车，不再暴露或作为验收门槛。当前四种模式和仅公交的未来时间映射见 [AMAP_ROUTES.md](AMAP_ROUTES.md)。
+
 2026-10-20 按既定路线新增本项目自己的 get_route，不修改 Tools for Assist、EOAIC2 或 HA Core。Google 原生起点行为继续由原工具保留；高德使用 Bridge 的可选家庭地址与默认出行方式，显式 origin 优先。起点不是现有附近中心，也不读取上游私有配置或 HA 设备位置。
 
 主要接口依据为 [路径规划 2.0](https://lbs.amap.com/api/webservice/guide/api/newroute)、[公交 v3](https://lbs.amap.com/api/webservice/guide/api/direction)、[未来驾车 ETD](https://lbs.amap.com/api/webservice/guide/api-advanced/advanced-path) 和 [摩托车](https://lbs.amap.com/api/logistic-service/guide/cycling-service/direction-motor)。使用国内 restapi.amap.com 的固定端点，不混用海外服务、SDK 或电动自行车来替代摩托车。具体映射、单位、时间与未实现参数见 [AMAP_ROUTES.md](AMAP_ROUTES.md)。
