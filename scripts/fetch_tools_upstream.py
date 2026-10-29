@@ -64,6 +64,35 @@ RELEASE_FILES = {
     "manifest.json": "3dc624a46e0f36e377161c053c9a1ebf951966c0390638a1214678ee791c2559",
 }
 
+CURRENT_COMMIT = "5d2e76d72564fe378f32870bd311ca9460956281"
+CURRENT_DESTINATION = DESTINATION.with_name("llm_intents-1.11.1")
+CURRENT_FILES = {
+    **RELEASE_FILES,
+    "base_tool.py": "4c848a90ea5a8bde041a48e891c67c138c5b7367d48210ef7bd575fa990f0b39",
+    "base_web_search.py": (
+        "cfebffb4820455e4d5eaaace25e3ada22dc57b00e18e784917309606557a661f"
+    ),
+    "cache.py": "5cf20608e030f922ef1ee215ef0d3cc16d2e1c5eb7ee815e38e325c72c5e6995",
+    "calculator.py": "ab655fb36b06f81a88322a9ec13cca462b16a395ec67e1cbd8d47f46f56905ae",
+    "const.py": "361f5ba387bf438d5163c7c5f1bb9e64a45cc91b23b849029d75d9fade72efa8",
+    "google_places.py": (
+        "fd2861bdc43cf4cf7401c56eac78f93981ee3b6fafa94252a06f49adc4e2b0e5"
+    ),
+    "google_routes.py": (
+        "18eafa69d6c28f70550ec5d96f4d8376fd537f68c10f6dbebd0c56dc2812ee77"
+    ),
+    "llm_functions.py": (
+        "e0e714c8144a868aa3eee101134c475d2a6b2a813cd5ff7491dd5ad1ad7c33ea"
+    ),
+    "play_media.py": "deb10d28f3e4f7d609472eaec2d95c354abb8482eb60b6c4eadd1dd2056716ce",
+    "searxng_search.py": (
+        "40638aa59320c6a40c2b184e6ede5336a60f6700621eceb9b94b8b1020d1888b"
+    ),
+    "wikipedia.py": "54d26631a04bad3f0609980ad690af6fb40d75286cd2d56e54d460d1efb9c3b3",
+    "youtube.py": "49410326f15576bb5949b342ca773707ab0b8183c581715f5331c079fff8861b",
+    "manifest.json": "28134b2cf015f6f92d786747815dd341189a5b3524ce58a0a8e8953367f19770",
+}
+
 
 def fetch_snapshot(commit: str, files: dict[str, str], root: Path) -> None:
     """Preserve each snapshot and reuse only byte-identical, verified files."""
@@ -99,6 +128,7 @@ def main() -> None:
     """Fetch test copies only; never install or alter an upstream integration."""
     fetch_snapshot(COMMIT, FILES, DESTINATION)
     fetch_snapshot(RELEASE_COMMIT, RELEASE_FILES, RELEASE_DESTINATION)
+    fetch_snapshot(CURRENT_COMMIT, CURRENT_FILES, CURRENT_DESTINATION)
 
 
 if __name__ == "__main__":

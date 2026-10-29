@@ -150,23 +150,38 @@ def tools_source():
                 sys.modules.pop(name)
 
 
+@pytest.fixture(params=["1.11.0", "1.11.1"])
+def release_version(request):
+    return request.param
+
+
 @pytest.fixture
-def release_source():
+def release_source(release_version):
     """Use a separate release cache, preserving the existing source baseline."""
     import hashlib
     import importlib
     import sys
     from types import ModuleType
 
-    from scripts.fetch_tools_upstream import RELEASE_DESTINATION, RELEASE_FILES
+    from scripts.fetch_tools_upstream import (
+        CURRENT_DESTINATION,
+        CURRENT_FILES,
+        RELEASE_DESTINATION,
+        RELEASE_FILES,
+    )
 
-    for name, expected in RELEASE_FILES.items():
-        path = RELEASE_DESTINATION / name
+    root, files = (
+        (CURRENT_DESTINATION, CURRENT_FILES)
+        if release_version == "1.11.1"
+        else (RELEASE_DESTINATION, RELEASE_FILES)
+    )
+    for name, expected in files.items():
+        path = root / name
         assert path.exists(), "Run python scripts/fetch_tools_upstream.py first"
         assert hashlib.sha256(path.read_bytes()).hexdigest() == expected
-    prefix = "_eoai_bridge_tools_1_11_contract"
+    prefix = "_eoai_bridge_tools_" + release_version.replace(".", "_")
     package = ModuleType(prefix)
-    package.__path__ = [str(RELEASE_DESTINATION)]
+    package.__path__ = [str(root)]
     sys.modules[prefix] = package
     try:
         yield lambda name: importlib.import_module(f"{prefix}.{name}")
@@ -237,13 +252,18 @@ async def calculator_api(hass, release_apis, release_source):
 
 
 @pytest.fixture
-def video_entities(hass, bridge_entry):
+async def video_entities(hass, bridge_entry):
     """Real HA registries/states with simulated media devices, never hardware."""
+    from homeassistant.components.homeassistant.exposed_entities import (
+        async_expose_entity,
+    )
     from homeassistant.components.media_player import MediaPlayerEntityFeature
     from homeassistant.helpers import area_registry as ar
     from homeassistant.helpers import device_registry as dr
     from homeassistant.helpers import entity_registry as er
+    from homeassistant.setup import async_setup_component
 
+    assert await async_setup_component(hass, "homeassistant", {})
     entities = []
     for index, room in enumerate(("Living Room", "Kitchen")):
         area = ar.async_get(hass).async_create(room)
@@ -267,6 +287,7 @@ def video_entities(hass, bridge_entry):
                 "supported_features": int(MediaPlayerEntityFeature.PLAY_MEDIA),
             },
         )
+        async_expose_entity(hass, "conversation", entity.entity_id, True)
         entities.append((entity, device, area))
     return entities
 

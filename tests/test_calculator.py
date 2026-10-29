@@ -44,13 +44,13 @@ async def calculate(hass, context, operation="expression", data=None):
     "operation,data,expected",
     [
         ("expression", ["1+2*3"], "7"),
-        ("expression", ["2^3"], "8"),
+        ("expression", ["2**3"], "8"),
         ("expression", ["(12-4)/2"], "4"),
-        ("expression", ["sqrt(9)+Abs(-2)"], "5"),
-        ("expression", ["sin(pi/2)+cos(0)"], "2"),
-        ("expression", ["log(E)"], "1"),
-        ("expression", ["Min(4,2,3)"], "2"),
-        ("expression", ["5//2+5%2"], "3"),
+        ("expression", ["-(2+3)"], "-5"),
+        ("expression", ["2**-3"], "0.125"),
+        ("expression", ["1e2/4"], "25"),
+        ("expression", ["+2+3"], "5"),
+        ("expression", ["5%2"], "1"),
         ("expression", ["3.5+2.25"], "5.75"),
         ("min", ["3", "-2", "0"], -2.0),
         ("max", ["3", "-2", "0"], 3.0),
@@ -88,6 +88,11 @@ async def test_original_calculator_results_without_side_effect_permission(
         ("expression", ["sqrt(-1)"]),
         ("expression", ["sin()"]),
         ("expression", ["True"]),
+        ("expression", ["2^3"]),
+        ("expression", ["5//2"]),
+        ("expression", ["sqrt(9)"]),
+        ("expression", ["pi+E"]),
+        ("expression", ["1000001**2"]),
         ("expression", ["+" * 12 + "1"]),
         ("expression", ["1+" * 40 + "1"]),
         ("expression", ["1" * 257]),
@@ -98,7 +103,7 @@ async def test_original_calculator_results_without_side_effect_permission(
         ("avg", ["1"] * 33),
     ],
 )
-async def test_unsafe_or_unbounded_input_never_reaches_sympy(
+async def test_unsafe_unsupported_or_unbounded_input_never_reaches_calculator(
     hass,
     calculator_entry,
     calculator_api,
@@ -109,7 +114,9 @@ async def test_unsafe_or_unbounded_input_never_reaches_sympy(
 ):
     native = release_source("calculator")
     with patch.object(
-        native, "_calculate", side_effect=AssertionError("must not execute")
+        native.CalculatorTool,
+        "async_call",
+        side_effect=AssertionError("must not execute"),
     ) as invoke:
         response = await calculate(hass, admin_context, operation, data)
     assert response["error_code"] == "invalid_args"
@@ -120,7 +127,9 @@ async def test_unsafe_or_unbounded_input_never_reaches_sympy(
 async def test_calculator_public_schema_and_extra_limits(
     hass, calculator_entry, calculator_api, admin_context, release_source
 ):
-    with patch.object(release_source("calculator"), "_calculate", new=Mock()) as invoke:
+    with patch.object(
+        release_source("calculator").CalculatorTool, "async_call", new=Mock()
+    ) as invoke:
         for action, data in [
             ("list_tools", {}),
             (
@@ -153,14 +162,23 @@ async def test_calculator_public_schema_and_extra_limits(
             ]
             assert schema["properties"]["data"]["items"] == {"type": "string"}
             assert metadata["bridge_constraints"]["expression_data_items"] == 1
-            assert "sqrt" in metadata["bridge_constraints"]["functions"]
+            limits = metadata["bridge_constraints"]
+            assert limits["functions"] == [] and limits["constants"] == []
+            assert limits["operators"] == ["+", "-", "*", "/", "%", "**"]
+            assert limits["max_absolute_power_base_when_exponent_gt_one"] == 1e6
         invoke.assert_not_called()
 
 
 async def test_original_calculator_context_and_no_duplicate_execution(
-    hass, calculator_entry, calculator_api, admin_context, release_source
+    hass,
+    calculator_entry,
+    calculator_api,
+    admin_context,
+    release_source,
+    release_version,
 ):
     native = release_source("calculator")
+    helper = "_calculate" if release_version == "1.11.0" else "_calculate_expression"
     original = native.CalculatorTool.async_call
     contexts = []
 
@@ -170,17 +188,29 @@ async def test_original_calculator_context_and_no_duplicate_execution(
 
     with (
         patch.object(native.CalculatorTool, "async_call", record),
-        patch.object(native, "_calculate", wraps=native._calculate) as invoke,
+        patch.object(native, helper, wraps=getattr(native, helper)) as invoke,
     ):
         response = await calculate(hass, admin_context)
     assert response["result"] == {"value": "3"}
     assert contexts[0].context is admin_context
-    invoke.assert_called_once_with("expression", ["1+2"])
+    invoke.assert_called_once_with(
+        *(("expression", ["1+2"]) if release_version == "1.11.0" else (["1+2"],))
+    )
 
 
 async def test_no_user_cannot_reach_native_calculator(
     hass, calculator_entry, calculator_api, release_source
 ):
-    with patch.object(release_source("calculator"), "_calculate", new=Mock()) as invoke:
+    with patch.object(
+        release_source("calculator").CalculatorTool, "async_call", new=Mock()
+    ) as invoke:
         assert (await calculate(hass, None))["error_code"] == "permission_denied"
         invoke.assert_not_called()
+
+
+async def test_native_floating_point_result_is_returned_without_recalculation(
+    hass, calculator_entry, calculator_api, admin_context
+):
+    response = await calculate(hass, admin_context, data=["0.1+0.2"])
+    assert response["success"] is True
+    assert response["result"]["value"] == "0.30000000000000004"

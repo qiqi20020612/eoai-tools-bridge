@@ -1,16 +1,16 @@
 # Tools for Assist 工具兼容清单
 
-核对日期：**2026-10-20（Asia/Shanghai）**。当前版本 **v0.8.1**，继续 0.x 小版本迭代。用户已明确取消 Home Control API：EOAIC2 已有原生 HA 控制，因此 Home Control 的状态/历史、动态控制、脚本、设备上下文和计时器均从本项目后续开发与 1.0 门槛中移除。既有 EOAIC2 设备控制 Functions 继续使用原来的路径。
+核对日期：**2026-10-29（Asia/Shanghai）**。当前版本 **v0.8.2**，继续 0.x 小版本迭代。用户已明确取消 Home Control API：EOAIC2 已有原生 HA 控制，因此 Home Control 的状态/历史、动态控制、脚本、设备上下文和计时器均从本项目后续开发与 1.0 门槛中移除。既有 EOAIC2 设备控制 Functions 继续使用原来的路径。
 
-源码基准为 [Tools for Assist 1.11.0](https://github.com/skye-harris/llm_intents/tree/198e37885fe06e6452d2d6e26bc5e532b1686acc/custom_components/llm_intents)，提交 `198e37885fe06e6452d2d6e26bc5e532b1686acc`；保留原基线 `100e740b93a2a1a6d304329883937193a4571ac0` 回归。HA 源码与自动化测试基准已升级为 **2026.10.2**，提交 `8d7fd8b68677c2585be36ec86043308f403875b8`；基准升级后的 443 项回归通过。v0.6.0 初始发布时的 2026.10.0 证据保留在测试记录中；v0.6.1 在新基准下通过 473 项回归，并修复通用调用的大结果裁剪。上游更新后重新核对入口、参数及实现，固定快照不保证未来版本兼容。Tavily 的增量核对见 [1.11.0 记录](TOOLS_FOR_ASSIST_1_11_0.md)。
+源码基准为 [Tools for Assist 1.11.1](https://github.com/skye-harris/llm_intents/tree/5d2e76d72564fe378f32870bd311ca9460956281/custom_components/llm_intents)，提交 `5d2e76d72564fe378f32870bd311ca9460956281`；1.11.0 与原始基线 `100e740b93a2a1a6d304329883937193a4571ac0` 保留回归。HA 源码与自动化测试基准升级为 **2026.10.4**，提交 `357cae5c598dfcd7a0ea7dc5b1facccd4ec6037b`，匹配测试插件 **0.13.375**。旧版本测试与验收保留原基准；当前计算器、播放、SearXNG 和缓存差异见 [1.11.1 记录](TOOLS_FOR_ASSIST_1_11_1.md)，Tavily 初始增量见 [1.11.0 记录](TOOLS_FOR_ASSIST_1_11_0.md)。固定快照不保证未来上游兼容。
 
 ## 当前范围与证据
 
 本节先列 Tools for Assist 直通能力，其 10 个工具名、13 个实现的来源清单不因新增高德工具而改变。v0.7 另交付独立 `eoai_tools_bridge_amap/find_places`、`eoai_tools_bridge_amap/geocode`，实现及独立证据见下文。用户已报告 v0.6.1 总体验收通过；逐后端/设备证据仍按原记录。
 
-原版 [llm_functions.py](https://github.com/skye-harris/llm_intents/blob/198e37885fe06e6452d2d6e26bc5e532b1686acc/custom_components/llm_intents/llm_functions.py) 中的四个非 Home Control API 为 `llm_intents`、`weather_forecast`、`basic_utilities`、`media_services`，合计 **10 个固定工具名、13 个实现**；四个搜索提供商共用 `search_web`。v0.6 在隔离测试中实例化这四个原版 API，核对其全部启用工具与此清单一致。原版参数、工具方法或 API 的模拟契约通过不代表真实后端或设备验收通过。
+原版 [llm_functions.py](https://github.com/skye-harris/llm_intents/blob/5d2e76d72564fe378f32870bd311ca9460956281/custom_components/llm_intents/llm_functions.py) 中的四个非 Home Control API 为 `llm_intents`、`weather_forecast`、`basic_utilities`、`media_services`，合计 **10 个固定工具名、13 个实现**；四个搜索提供商共用 `search_web`。v0.8.2 分别实例化 1.11.0/1.11.1 的四个原版 API，核对全部启用工具与此清单一致。下表包含历史与当前自动化证据；模拟契约通过不代表真实后端或设备验收通过。
 
-| API / 工具 | 参数与条件 | v0.6 开发验证 | 真实验收 |
+| API / 工具 | 参数与条件 | 自动化证据（含历史回归） | 真实验收 |
 | --- | --- | --- | --- |
 | `llm_intents/search_web` | `query`；Brave LLM Context 可选 `freshness`，Tavily 可选 `topic/time_range`；另含 Brave、SearXNG | 四个实现的原版参数和模拟调用；历史固定搜索、目录、就绪及通用调用回归；v0.6.1 用原版 Brave LLM Context 与 EOAIC2 脚本验证带/不带 freshness 的大结果仍保留正文 | v0.6.1 总体验收由用户报告通过；提供商逐项及 1.11.0 组合待确认 |
 | `llm_intents/find_places` | `query`；上游地点后端配置 | 原版参数、目录、就绪和模拟 HTTP 调用 | 待逐项实际验收 |
@@ -20,8 +20,8 @@
 | `weather_forecast/get_weather_forecast` | `range` 枚举；配置上游天气实体 | 原版参数与方法、模拟天气数据、文本响应 | 待逐项实际验收 |
 | `basic_utilities/unit_convert` | 字符串 `amount/from_unit/to_unit`，支持分数 | 原版参数和计算代码、原版 EOAIC2 脚本接线 | 待逐项实际验收 |
 | `basic_utilities/calendar_day_info` | 整数 `day/month`，可选 `year` | 原版参数和日期代码、原版 EOAIC2 脚本接线 | 待逐项实际验收 |
-| `basic_utilities/calculate` | `operation=expression/min/max/avg`，字符串数组 `data`；遵守下述数值边界 | 原版 BasicUtilitiesAPI、选择器和 SymPy 计算；表达式拒绝边界、目录、描述、检查及 EOAIC2 脚本 | 待实际计算与对话验收 |
-| `media_services/play_video` | `video_url`，可选动态 `entity_id` 数组、`area/device_id`；上游启用 YouTube、HA 中有适用播放器 | 原版 MediaAPI、动态实体选择器、显式实体/区域/设备及单设备回退；调用模拟 HA 播放服务；错误、超时不重试；EOAIC2 脚本 | 待物理播放器与对话验收 |
+| `basic_utilities/calculate` | `operation=expression/min/max/avg`，字符串数组 `data`；遵守下述数值边界 | 原版 BasicUtilitiesAPI、选择器、1.11.1 AST/执行器与旧 SymPy 回归；表达式拒绝边界、目录、描述、检查及 EOAIC2 脚本 | 待实际计算与对话验收 |
+| `media_services/play_video` | `video_url`，可选动态 `entity_id` 数组、`area`；1.11.1 仅已暴露给 Assist 的适用播放器，旧版 device_id 仅原生兼容 | 两版原生 MediaAPI；1.11.1 未暴露实体不能被实体/区域/默认路径选中，旧版设备直通仍回归；模拟播放与 EOAIC2 脚本、错误/超时不重试 | 待物理播放器与对话验收 |
 
 播放是本次明确保留的 Tools for Assist 媒体工具；HA 原生设备控制、脚本及计时器由 EOAIC2 承担。上游 PlayVideoTool 会接收桥接传入的原始管理员 `LLMContext`，但它调用 `media_player.play_media` 时**没有继续传入 Context**，因此下游服务 Context 的 `user_id` 为空。桥接仍执行入口管理员、精确白名单及副作用许可检查；不据此宣称用户身份贯穿下游服务，也不修改上游或 HA Core 来改变该行为。真实环境需确认此行为符合自身使用条件。
 
@@ -55,14 +55,15 @@ basic_utilities/calculate
 
 ## 计算器边界
 
-上游使用 SymPy `sympify`，其官方文档说明内部使用 `eval`。v0.6 在调用原版工具前，用标准库 AST 和有限数值运算校验输入；估算值丢弃，实际结果仍由原版工具生成。桥接不接受任意 SymPy/Python 表达式：
+Tools for Assist 1.11.1 将 SymPy 改为受限 AST，并在执行器线程计算表达式；1.11.0 仍使用 SymPy。v0.8.2 统一收窄至两版共有的数字算术，标准库 AST 只校验输入和预算，估算值丢弃，实际结果仍由原版工具生成。旧版也适用下列桥接边界：
 
 - `data` 为 1–32 个字符串；`expression` 必须恰好一个，最多 256 字符、64 个 AST 节点、8 层深度。
-- 仅有限实数、常量 `pi/E`、运算 `+ - * / // % ** ^` 及函数 `sqrt/sin/cos/tan/exp/log/Abs/abs/floor/ceiling/Min/Max`；函数仅接受位置参数。拒绝属性、索引、字符串、任意名称或代码。
+- 仅有限数值字面量、运算 `+ - * / % **`、正负号及括号。`^`、`//`、函数、命名常量（包括 pi/E）、属性、索引、字符串、名称和代码全部拒绝；不把 ^ 隐式改写为 **。
 - 数字及中间估算绝对值最多 `1e100`，非零值至少 `1e-100`，幂指数绝对值最多 32；非法运算、非有限结果和可检测的下溢拒绝。
+- 与 1.11.1 原生边界对齐：当指数大于 1 时，底数绝对值不得超过 `1e6`，不会先放行再让上游拒绝。
 - `min/max/avg` 每个数值字符串最多 64 字符，使用相同有限数值边界。
 
-限制作为 `bridge_constraints` 随计算器目录项及单工具描述返回；超出限制时返回 `invalid_args`，不调度计算器。受信任的同步上游代码仍须正常返回，20 秒异步超时不能强制中断同步计算；这些限制不构成 Python 沙箱或 CPU 隔离。
+限制作为 `bridge_constraints` 随计算器目录项及单工具描述返回；functions/constants 列表为空，operators 只列当前六种运算。超出限制时返回 `invalid_args`，不调度计算器。受信任的上游代码仍须正常返回，异步超时不能强制终止执行器线程或旧版同步计算；这些限制不构成 Python 沙箱或 CPU 隔离。
 
 ## Home Control 的既有兼容
 
@@ -116,12 +117,12 @@ v0.6 补齐当前非 Home Control 原版契约，v0.6.1 修复通用裁剪，v0.
 
 1.0 前仍需完成：
 
-- [ ] 在真实 HA 中记录 1.11.0 或后续复核版本实际启用的四个 API、工具清单、参数和响应；查询、计算器、媒体分别验收，注明缺少的后端条件，不把类型就绪当作实际成功。
+- [ ] 在真实 HA 中记录 1.11.1 或后续复核版本实际启用的四个 API、工具清单、参数和响应；查询、计算器、媒体分别验收，注明缺少的后端条件，不把类型就绪当作实际成功。
 - [ ] 实际验证四种搜索后端及可选筛选参数，以及维基百科、YouTube、天气、单位换算和日期；接受计算器数值限制，验证原版结果及拒绝行为。地点与路线按下述高德门槛验收。
 - [ ] 完成本项目高德地点查询、路线查询和必要位置解析的实现、配置及独立工具身份；逐项记录与 Tools for Assist 的参数/字段/出行方式/时间能力映射，所有差异明确处理，高德路径不依赖 Google Key。
 - [ ] 高德工具具备发现/描述/不执行参数逻辑的就绪检查、原始管理员与精确白名单、参数/输出限制及错误处理的契约测试；覆盖坐标、同名地点、缺失字段、空结果、超时、配额/Key 失败和大结果，不以旧 Google 测试替代。
 - [ ] 在真实 HA 与 EOAIC2 中分别验收高德地点和路线，记录所用 API、实际 Key 的接口权限、起终点/城市、坐标及单位/时间映射和有效结果；旧 Google 直通保留兼容回归，新增地点/路线的 1.0 验收以高德为准。
-- [ ] 用适用物理播放器验证实体/区域/设备选择、单设备回退、独立副作用许可与不重试；确认上游下游 Context 限制及失败后的人工状态核对。
+- [ ] 用适用物理播放器验证 1.11.1 的 Assist 暴露限制、实体/区域选择、单播放器回退、独立副作用许可与不重试；旧版 device_id 仅保留原生兼容，确认下游 Context 限制及失败后的人工状态核对。
 - [ ] 实际验证 EOAIC2 原始管理员 Context、`_function_result`、模型选工具和参数描述，并回归既有原生 HA 控制 Functions。
 - [ ] 实际通过 HACS/Release 升级、重启及选项保持；四个保留服务正常，旧 search_web 服务不再注册；Functions 与响应读取按 v0.7 显式迁移，不扩大授权。
 - [ ] 复核发布时的上游变更、受支持 HA 版本、参数/输出预算及全部契约检查；当前非 Home Control 工具没有未记录的兼容缺口，CI 无遗漏或跳过。

@@ -1,4 +1,4 @@
-# EOAIC2 独立 Functions（v0.8.1）
+# EOAIC2 独立 Functions（v0.8.2）
 
 推荐让模型直接看到每个工具，而不是通过 call_allowed_tool 再拼接工具身份。本文覆盖当前 **13 个 API/工具组合**：10 个 Tools for Assist 工具与高德 find_places、geocode、get_route；提供 13 份主示例及 2 份搜索参数变体，都是静态、完整、可直接复制的 YAML，不需要生成器。
 
@@ -19,6 +19,8 @@ v0.7.2 完善的 14 份既有工具说明、原生参数和脚本继续保留；
 
 v0.8.1 高德路线只保留 DRIVE/WALK/BICYCLE/TRANSIT，departure_time 仅限公交。请替换已保存的高德路线完整列表项；旧默认模式 TWO_WHEELER 在集成加载时回退 DRIVE，其他配置与权限保留。Google 路线 YAML 与运行行为不变。
 
+v0.8.2 适配 Tools for Assist 1.11.1：计算器收窄至两版共有数字算术，播放移除 device_id 并说明 Assist 暴露限制。请手动替换 calculate 和 play_video 完整列表项，不能重复追加；其他静态示例保持不变。与 1.11.0 的共同参数仍回归，旧版直接调用行为以其当前原生 Schema 为准。
+
 | 工具 | 固定组合 | 必填 | 可选/默认 |
 | --- | --- | --- | --- |
 | search_web | llm_intents/search_web | query | 按提供商选择，见下文 |
@@ -30,14 +32,14 @@ v0.8.1 高德路线只保留 DRIVE/WALK/BICYCLE/TRANSIT，departure_time 仅限�
 | unit_convert | basic_utilities/unit_convert | amount/from_unit/to_unit 字符串 | 无 |
 | calendar_day_info | basic_utilities/calendar_day_info | day/month 整数 | year 整数；省略用上游当前本地年份 |
 | calculate | basic_utilities/calculate | operation/data 字符串数组 | 无；额外数值限制如下 |
-| play_video | media_services/play_video | video_url | entity_id 数组、area、device_id；仅单适用播放器可省略目标 |
+| play_video | media_services/play_video | video_url | entity_id 数组、area；1.11.1 仅单个已暴露的适用播放器可省略目标 |
 | 高德 find_places | eoai_tools_bridge_amap/find_places | query | city/location/radius/sort/types/limit；详情如下 |
 | geocode | eoai_tools_bridge_amap/geocode | address | city；省略继承桥接城市 |
 | 高德 get_route | eoai_tools_bridge_amap/get_route | destination | origin 省略用桥接家庭地址；mode 继承配置；departure_time、origin_city、destination_city |
 
 ## 调用与结果解读
 
-以下说明以 Tools for Assist 1.11.0 固定源码与本项目现有实现为准。正文路径均相对于完整 call_tool 响应；两家 get_route 的能力与正文结构不同。
+以下说明以 Tools for Assist 1.11.1 固定源码与本项目现有实现为准，保留 1.11.0 兼容回归。正文路径均相对于完整 call_tool 响应；两家 get_route 的能力与正文结构不同。
 
 | 工具 | 调用与参数要点 | 结果及边界 |
 | --- | --- | --- |
@@ -580,7 +582,7 @@ day/month 是整数，year 是可选整数，省略保留原版当前本地年�
 
 ### 计算器 calculate
 
-operation 原生枚举 expression/min/max/avg；data 为字符串数组。桥接另要求 1–32 项，expression 恰好一项且最多 256 字符；min/max/avg 每项最多 64 字符。数值、幂、AST 节点/深度与函数名单见片段和兼容清单；模型 Schema 中的最大数组/字符串长度不能表达全部语义，Bridge 会继续执行完整 guard。不得发送任意 Python/SymPy 代码。
+operation 原生枚举 expression/min/max/avg；data 为字符串数组。桥接另要求 1–32 项，expression 恰好一项且最多 256 字符；min/max/avg 每项最多 64 字符。表达式仅支持数字、+ - * / % **、正负号及括号，不接受函数、pi/E、^ 或 //。数值、幂及 AST 预算见片段和兼容清单；模型 Schema 不能表达全部语义，Bridge 会继续执行 guard。1.11.1 使用浮点 AST 求值，可能出现 0.30000000000000004 等浮点结果；不保证精确代数值，也不替上游重算。
 
 文件：[eoaic2_calculate.yaml](../examples/eoaic2_calculate.yaml)。
 
@@ -616,13 +618,14 @@ operation 原生枚举 expression/min/max/avg；data 为字符串数组。桥接
           description: >-
             Required string array, never JSON numbers. expression needs exactly
             one string of at most 256 characters; min/max/avg need 1-32 numeric
-            strings, at most 64 characters each. Expressions allow finite numbers,
-            pi/E, + - * / // % ** ^, and sqrt, sin, cos, tan, exp, log, Abs, abs,
-            floor, ceiling, Min, Max. Trigonometry uses radians; log takes 1-2
-            arguments, Min/Max 2-8, other functions one. No variables, code,
-            attributes, indexing or quoted strings. At most 64 AST nodes and depth
+            strings, at most 64 characters each. Expressions allow finite numeric
+            literals, + - * / % **, unary signs and parentheses. Use ** for powers;
+            no ^, //, functions, named constants, variables, code, attributes,
+            indexing or quoted strings. At most 64 AST nodes and depth
             8; numbers/intermediates have absolute value at most 1e100 and, unless
-            zero, at least 1e-100; exponent absolute value at most 32. No default.
+            zero, at least 1e-100; exponent absolute value at most 32. For an
+            exponent greater than 1, the base absolute value is at most 1e6.
+            No default. These limits also apply with older Tools for Assist.
       required: [operation, data]
       additionalProperties: false
   function:
@@ -635,23 +638,24 @@ operation 原生枚举 expression/min/max/avg；data 为字符串数组。桥接
 
 ### 视频播放 play_video
 
-video_url 必填；entity_id 是字符串数组，不是字符串，area 是原生参数名（不是 area_id），device_id 是设备注册 ID。三种目标都是可选：原版只在恰有一个适用播放器时允许完全省略；多个目标类型可能扩大播放范围。播放器 entity_id 是 HA 当前动态枚举，通用文件不硬编码虚构设备。可先用 describe_tool 查看 items.enum，再据实际环境决定是否在 Function 的 items 中收紧 enum；原生选择器始终验证。仍需独立副作用许可，outcome_unknown=true 不自动重试。
+video_url 必填；entity_id 是字符串数组，不是字符串，area 是原生参数名（不是 area_id）。1.11.1 移除 device_id，只选择已暴露给当前 Assist 的、具备 PLAY_MEDIA 的 tv/receiver。两个目标均可选：仅恰有一个已暴露适用播放器时允许完全省略；区域及组合目标可能播放到多个已暴露实体。可先用 describe_tool 查看动态 items.enum，通用文件不硬编码虚构设备或“无设备”占位文本。原生选择器始终验证；仍需独立副作用许可，outcome_unknown=true 不自动重试。1.11.0 的旧设备参数仅保留通用网关原生直通，不在新 Function 中暴露。
 
 文件：[eoaic2_play_video.yaml](../examples/eoaic2_play_video.yaml)。
 
 <!-- example: eoaic2_play_video.yaml -->
 ```yaml
 # Requires call_tool enabled, media_services/play_video allowed, original admin,
-# separate side-effect permission, YouTube enabled upstream and a suitable player.
+# separate side-effect permission, YouTube enabled and a player exposed to Assist.
 # Dynamic entity choices remain enforced by the native HA selector; never invent IDs.
 - spec:
     name: play_video
     description: >-
       Send a requested video URL to HA media players through Tools for Assist;
       this causes playback and needs the existing side-effect permission. Choose
-      known targets; area/device targets or combined selectors may reach multiple
-      players. Automatic entity discovery includes tv/receiver players with
-      PLAY_MEDIA support, not audio-only speakers. URL/provider support still
+      known exposed targets; area or combined selectors may reach multiple
+      exposed players. With Tools for Assist 1.11.1, discovery includes only
+      tv/receiver players exposed to this assistant with PLAY_MEDIA support,
+      not audio-only speakers. URL/provider support still
       depends on the player, so a YouTube search link is not a compatibility
       guarantee. result.success/message acknowledge the service command, not
       observed playback. If outcome_unknown is true, inspect device state before
@@ -672,20 +676,15 @@ video_url 必填；entity_id 是字符串数组，不是字符串，area 是原�
           description: >-
             Optional string array of exact media_player entity IDs from the
             current native selector, even for one target. Choices vary with HA;
-            do not invent IDs. With all targets omitted, upstream selects a player
-            only if exactly one suitable player exists, otherwise it fails.
+            do not invent IDs or use the no-devices placeholder. In 1.11.1 choices
+            must be exposed to Assist. With all targets omitted, upstream selects
+            a player only if exactly one suitable exposed player exists.
         area:
           type: string
           description: >-
             Optional known HA area name or ID string; native parameter is area,
-            not area_id. Targets all discovered video-capable players in the area,
+            not area_id. Targets all exposed video-capable players in the area,
             adding to entity_id if supplied. No fixed default area.
-        device_id:
-          type: string
-          description: >-
-            Optional exact HA device registry ID string, not an entity ID or
-            device name. May expand to the device's media entities; URL/video
-            compatibility remains device-dependent. No fixed default device.
       required: [video_url]
       additionalProperties: false
   function:
@@ -699,9 +698,6 @@ video_url 必填；entity_id 是字符串数组，不是字符串，area 是原�
           {% endif %}
           {% if area is defined %}
             {% set args = dict(args, area=area) %}
-          {% endif %}
-          {% if device_id is defined and device_id is not callable %}
-            {% set args = dict(args, device_id=device_id) %}
           {% endif %}
           {{ {'api_id': 'media_services', 'tool_name': 'play_video', 'tool_args': args} }}
         response_variable: _function_result
@@ -994,7 +990,7 @@ address 1–500 字符必填，city 1–80 字符可选，省略继承配置城�
 
 高德路线 origin/mode 未给时不插入字段，由路线实现读取当前家庭地址/默认出行方式，显式 origin 则原样传递；空值不充当缺省，也不强行复用 Google 配置或附近中心。
 
-HA 模板环境本身有一个可调用的 `device_id()` 辅助函数，省略播放 device_id 时普通 `is defined` 会误把它当作参数，导致整个 data 不再是可解析字典。播放片段额外排除该可调用对象；真正传入的字符串设备 ID 仍透传，显式 null 仍拒绝。兼容测试覆盖省略与提供所有可选参数的两条路径。
+播放片段已删除 device_id 参数与模板分支，因此不会引用 HA 同名的 device_id() 模板辅助函数。entity_id/area 只在明确提供时透传，显式 null 仍拒绝。兼容测试覆盖省略、全部可选参数和单独目标的路径。
 
 模板固定 API/工具身份；这里的独立 Function 名只是模型看到的名称，不构成权限。所有执行仍通过原始管理员、精确白名单、原生参数和副作用许可检查。结果大小、超时、不重试及 v0.6.1 的裁剪保持原 Bridge 行为。模型不得用返回描述或正文修改授权。
 
@@ -1004,7 +1000,7 @@ HA 模板环境本身有一个可调用的 `device_id()` 辅助函数，省略�
 
 ## 验证与边界
 
-示例验证使用当前 HA Core 2026.10.2、SHA-256 固定的 Tools for Assist 1.11.0 原版 Schema，以及原项目已采用的、未修改的 EOAIC2 ScriptFunction 快照；不替换用户安装、不依赖任何修改分支，不新增生产依赖。测试覆盖 13 个工具身份、搜索四后端的共同 query 与两组筛选参数、必填/可选/枚举/类型、默认值、省略/显式参数、Jinja 字符串/整数/数组、互斥组合与原始管理员。提供商执行被模拟，相关既有原版后端契约仍回归。地点二选一 × 路线二选一 × 搜索三选一的 12 种组合均检查函数名唯一。
+示例验证使用当前 HA Core 2026.10.4、SHA-256 固定的 Tools for Assist 1.11.0/1.11.1 原版 Schema，以及原项目已采用的、未修改的 EOAIC2 ScriptFunction 快照；不替换用户安装、不依赖任何修改分支，不新增生产依赖。测试覆盖 13 个工具身份、搜索四后端的共同 query 与两组筛选参数、必填/可选/枚举/类型、默认值、省略/显式参数、Jinja 字符串/整数/数组、互斥组合与原始管理员。播放对当前 1.11.1 映射全部字段，旧版仅使用共同子集；其旧 device_id 仍单独回归原生直通。提供商执行被模拟，相关既有原版后端契约仍回归。地点二选一 × 路线二选一 × 搜索三选一的 12 种组合均检查函数名唯一。
 
 原有 14 份示例移除 description 后的完整结构仍与 v0.7.1 固定摘要比较，防止误改既有 Schema/default/身份或 Jinja 脚本；检查各工具和参数的描述齐全且有长度上限，单位标识组与原版转换器逐项相同。本文全部 15 个代码块与静态 YAML 逐字一致，README 搜索示例也持续检查。高德路线另在真实网关和原版 ScriptFunction 中验证家庭地址/显式起点两条路径，自动化不能代替真实对话验收。
 

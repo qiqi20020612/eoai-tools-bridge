@@ -75,3 +75,15 @@ EOAIC2 推荐采用 [独立 search_web](../examples/eoaic2_search_web.yaml)，�
 高德路线删除 TWO_WHEELER 摩托车及 DRIVE + departure_time 未来驾车的实际接口、解析和配置选项；仅保留即时 DRIVE、WALK、BICYCLE、TRANSIT，以及 TRANSIT + departure_time。旧版保存的 TWO_WHEELER 默认模式在集成加载时自动改为 DRIVE，只更新该项，家庭地址、附近中心、Key、默认城市、白名单、网关及副作用许可原样保留，无需重建配置项。
 
 更新并重新加载/重启后，手动替换已保存的 [高德路线 YAML](../examples/eoaic2_get_route_amap.yaml)，不要重复追加同名 get_route；HACS 不自动改写 Functions。模型或旧脚本显式传入 TWO_WHEELER 会被参数校验拒绝，非公交传入 departure_time 也失败且不发 HTTP，不会忽略时间退回即时路线。需要驾车时省略时间；需要未来公交时使用 TRANSIT。Google get_route、其他工具、四服务及既有权限/返回格式保持不变。
+
+## 从 v0.8.1 更新至 v0.8.2
+
+当前正式核对目标为 Tools for Assist 1.11.1、HA Core 2026.10.4；不更新用户实际安装。HACS 独立更新 Bridge，Tools for Assist 与 HA 按各自机制更新。
+
+手动替换 EOAIC2 中已有的 [calculate](../examples/eoaic2_calculate.yaml) 与 [play_video](../examples/eoaic2_play_video.yaml) 完整 YAML 列表项，不重复追加同名 Function：
+
+- 计算器统一为有限数字、+ - * / % **、正负号及括号，幂用 **；函数、pi/E、^、// 不再接受，旧 Tools for Assist 也使用这一桥接边界。原有数值/复杂度预算保留，指数大于 1 时底数绝对值不超过 1e6。参数不重写，返回仍为原生 value。
+- 1.11.1 播放只支持 entity_id 数组或 area，移除 device_id。请在 HA 中将适用 tv/receiver 暴露给 Assist，再从 describe_tool 查看当前实体；区域、组合及默认回退只使用这些实体，没有适用暴露设备时明确失败。旧版工具的原生 device_id 直通仍保留，但新独立 Function 统一使用共同参数。
+- 1.11.1 SearXNG 自动正确编码查询参数，Bridge 不额外编码或改写。上游缓存改为共享内存、默认 TTL 2 小时；Bridge 权限每次仍重新检查，缓存不会提供额外访问权。
+
+网关、原始管理员 Context、精确白名单、副作用许可、四服务、v0.6.1 结果裁剪和高德能力保持不变。独立高德 get_route 仍只保留四模式及未来公交。完整来源、兼容范围和验证限制见 [1.11.1 说明](TOOLS_FOR_ASSIST_1_11_1.md)。

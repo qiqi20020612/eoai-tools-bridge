@@ -11,8 +11,9 @@ from test_function_examples import ROOT
 # Parsed static YAML from v0.7.1, commit b411d5520a48189a99c39b592e7e282715c0f76e,
 # with description fields removed recursively. Includes every schema keyword,
 # model name, fixed identity and the complete original Jinja/script strings.
-# CI needs neither git history nor another upstream/repository dependency.
-V071_CONTRACT_SHA256 = {
+# play_video intentionally drops device_id in v0.8.2 for Tools for Assist 1.11.1.
+# Other non-description contracts remain at v0.7.1. CI needs no git history.
+STATIC_CONTRACT_SHA256 = {
     "calculate": "86457a0c7030dbe8582ba74d12ef31907bc40eaf65e0d8f5305cd2eb7ef67ba1",
     "calendar_day_info": (
         "50a28cbdb710efb59add2324a75ae763eef5511b06561cce77e317ef744c7b80"
@@ -28,7 +29,7 @@ V071_CONTRACT_SHA256 = {
     "get_weather_forecast": (
         "4f12c4305c00ac5bbb827bd51dd31529d747077100fa052b550360fd64cae790"
     ),
-    "play_video": "4d410027eeaffd3c56e917fd9fead70b5f09d1661a599815e2b8f47d7d390f59",
+    "play_video": "3798ea0b7be3767c17975e3b20b83952661e6419533b12ffc7c18c55f6342fcd",
     "search_web": "248691c8bf270c2803f338e8d33c81507f3a492c4b2e0bab50ec4b983aae97d2",
     "search_web_brave_llm_context": (
         "69325c7790b3cc0f9a078c06be174184795052d3102c4654cb54d0016d74f3d2"
@@ -58,16 +59,18 @@ def without_descriptions(value):
     return value
 
 
-@pytest.mark.parametrize("file", V071_CONTRACT_SHA256)
-def test_description_patch_preserves_v071_schema_and_script(file):
+@pytest.mark.parametrize("file", STATIC_CONTRACT_SHA256)
+def test_static_schema_and_script_only_change_for_documented_migrations(file):
     example = yaml.safe_load((ROOT / "examples" / f"eoaic2_{file}.yaml").read_text())
     serialized = json.dumps(
         without_descriptions(example), sort_keys=True, separators=(",", ":")
     )
-    assert hashlib.sha256(serialized.encode()).hexdigest() == V071_CONTRACT_SHA256[file]
+    assert (
+        hashlib.sha256(serialized.encode()).hexdigest() == STATIC_CONTRACT_SHA256[file]
+    )
 
 
-@pytest.mark.parametrize("file", [*V071_CONTRACT_SHA256, "get_route_amap"])
+@pytest.mark.parametrize("file", [*STATIC_CONTRACT_SHA256, "get_route_amap"])
 def test_all_model_descriptions_are_present_and_bounded(file):
     spec = yaml.safe_load((ROOT / "examples" / f"eoaic2_{file}.yaml").read_text())[0][
         "spec"

@@ -211,7 +211,13 @@ def example(case):
 
 @pytest.fixture
 async def native(
-    hass, gateway_entry, admin_context, release_source, video_entities, case
+    hass,
+    gateway_entry,
+    admin_context,
+    release_source,
+    release_version,
+    video_entities,
+    case,
 ):
     context = llm.LLMContext(
         platform="extended_openai_conversation",
@@ -238,8 +244,9 @@ async def native(
             const.CONF_GOOGLE_ROUTES_DEFAULT_TRAVEL_MODE: "WALK",
         },
         hass,
+        **({"llm_context": context} if release_version == "1.11.1" else {}),
     )
-    if case.name == "play_video":
+    if case.name == "play_video" and release_version == "1.11.0":
         tool.update_args(hass)
     api = QueryAPI(hass, case.api, tool)
     stop = llm.async_register_api(hass, api)
@@ -254,15 +261,15 @@ def arguments(case, optional, video_entities):
     if optional:
         supplied.update(case.optional)
         if case.name == "play_video":
-            entity, device, area = video_entities[0]
-            supplied.update(
-                entity_id=[entity.entity_id], area=area.name, device_id=device.id
-            )
+            entity, _, area = video_entities[0]
+            supplied.update(entity_id=[entity.entity_id], area=area.name)
     return supplied
 
 
 @pytest.mark.parametrize("case", PARAMETERS, indirect=True)
-def test_native_parameter_names_required_enums_and_types(case, example, native):
+def test_native_parameter_names_required_enums_and_types(
+    case, example, native, release_version
+):
     api, tool = native
     spec = example["spec"]
     assert spec["name"] == case.name
@@ -275,6 +282,8 @@ def test_native_parameter_names_required_enums_and_types(case, example, native):
     assert set(schema["required"]) == set(upstream["required"])
     if case.file == "search_web":
         assert fields == {"query"}
+    elif case.name == "play_video" and release_version == "1.11.0":
+        assert fields == set(upstream["properties"]) - {"device_id"}
     else:
         assert fields == set(upstream["properties"])
     for name in fields:
@@ -565,17 +574,16 @@ async def test_stale_provider_specific_function_fails_closed_after_provider_swit
 
 
 @pytest.mark.upstream
-@pytest.mark.parametrize("target", ["entity_id", "area", "device_id"])
+@pytest.mark.parametrize("target", ["entity_id", "area"])
 @pytest.mark.parametrize("case", [PARAMETERS[14]], indirect=True)
 async def test_each_native_playback_target_is_optional_independently(
     hass, case, target, example, native, upstream_script_function, video_entities
 ):
     api, tool = native
-    entity, device, area = video_entities[0]
+    entity, _, area = video_entities[0]
     value = {
         "entity_id": [entity.entity_id],
         "area": area.name,
-        "device_id": device.id,
     }[target]
     supplied = {**case.minimal, target: value}
     execute = AsyncMock(return_value=llm.ToolResult(data={"success": True}))

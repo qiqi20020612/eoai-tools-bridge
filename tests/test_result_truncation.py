@@ -206,6 +206,7 @@ async def test_large_original_brave_results_through_actions_and_eoaic2(
     gateway_entry,
     admin_context,
     release_source,
+    release_version,
     upstream_script_function,
     freshness,
     nested,
@@ -242,7 +243,9 @@ async def test_large_original_brave_results_through_actions_and_eoaic2(
         with (
             patch.object(module, "async_get_clientsession", return_value=session),
             patch.object(
-                release_source("base_web_search"), "SQLiteCache", return_value=cache
+                release_source("base_web_search"),
+                "SQLiteCache" if release_version == "1.11.0" else "InMemoryCache",
+                return_value=cache,
             ),
         ):
             direct = await hass.services.async_call(

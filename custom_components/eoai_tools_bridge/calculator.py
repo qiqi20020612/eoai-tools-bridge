@@ -1,4 +1,4 @@
-"""Bound numeric inputs before the upstream SymPy-backed calculator runs."""
+"""Bound arithmetic supported by both upstream calculator implementations."""
 
 import ast
 import math
@@ -19,31 +19,16 @@ MAX_EXPRESSION_DEPTH = 8
 MAX_NUMBER = 1e100
 MIN_NONZERO = 1e-100
 MAX_EXPONENT = 32
-_CHARACTERS = re.compile(r"[0-9A-Za-z_+\-*/%^().,\s]+\Z", re.ASCII)
+MAX_POWER_BASE = 1e6
+_CHARACTERS = re.compile(r"[0-9eE_+\-*/%().\s]+\Z", re.ASCII)
 _OPERATORS = {
     ast.Add: operator.add,
     ast.Sub: operator.sub,
     ast.Mult: operator.mul,
     ast.Div: operator.truediv,
-    ast.FloorDiv: operator.floordiv,
     ast.Mod: operator.mod,
     ast.Pow: math.pow,
 }
-_FUNCTIONS = {
-    "sqrt": (math.sqrt, 1, 1),
-    "sin": (math.sin, 1, 1),
-    "cos": (math.cos, 1, 1),
-    "tan": (math.tan, 1, 1),
-    "exp": (math.exp, 1, 1),
-    "log": (math.log, 1, 2),
-    "Abs": (abs, 1, 1),
-    "abs": (abs, 1, 1),
-    "floor": (math.floor, 1, 1),
-    "ceiling": (math.ceil, 1, 1),
-    "Min": (min, 2, 8),
-    "Max": (max, 2, 8),
-}
-_CONSTANTS = {"pi": math.pi, "E": math.e}
 
 
 def is_calculator(api_id: str, tool: llm.Tool) -> bool:
@@ -62,9 +47,10 @@ def calculator_constraints() -> dict[str, Any]:
         "max_absolute_number": MAX_NUMBER,
         "min_nonzero_absolute_number": MIN_NONZERO,
         "max_absolute_exponent": MAX_EXPONENT,
-        "functions": sorted(_FUNCTIONS),
-        "constants": sorted(_CONSTANTS),
-        "operators": ["+", "-", "*", "/", "//", "%", "**", "^"],
+        "max_absolute_power_base_when_exponent_gt_one": MAX_POWER_BASE,
+        "functions": [],
+        "constants": [],
+        "operators": ["+", "-", "*", "/", "%", "**"],
     }
 
 
@@ -87,7 +73,7 @@ def _validate_expression(expression: str) -> None:
         raise ValueError
     if not _CHARACTERS.fullmatch(expression):
         raise ValueError
-    tree = ast.parse(expression.strip().replace("^", "**"), mode="eval")
+    tree = ast.parse(expression.strip(), mode="eval")
     if sum(1 for _ in ast.walk(tree)) > MAX_EXPRESSION_NODES:
         raise ValueError
 
@@ -96,14 +82,14 @@ def _validate_expression(expression: str) -> None:
             raise ValueError
         if isinstance(node, ast.Constant):
             return _number(node.value)
-        if isinstance(node, ast.Name) and node.id in _CONSTANTS:
-            return _CONSTANTS[node.id]
         if isinstance(node, ast.UnaryOp) and type(node.op) in {ast.UAdd, ast.USub}:
             value = visit(node.operand, depth + 1)
             return value if isinstance(node.op, ast.UAdd) else -value
         if isinstance(node, ast.BinOp) and type(node.op) in _OPERATORS:
             left, right = visit(node.left, depth + 1), visit(node.right, depth + 1)
-            if isinstance(node.op, ast.Pow) and abs(right) > MAX_EXPONENT:
+            if isinstance(node.op, ast.Pow) and (
+                abs(right) > MAX_EXPONENT or (abs(left) > MAX_POWER_BASE and right > 1)
+            ):
                 raise ValueError
             result = _number(_OPERATORS[type(node.op)](left, right))
             if (
@@ -112,17 +98,6 @@ def _validate_expression(expression: str) -> None:
                 and right != 0
                 and result == 0
             ):
-                raise ValueError
-            return result
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
-            if node.func.id not in _FUNCTIONS or node.keywords:
-                raise ValueError
-            function, minimum, maximum = _FUNCTIONS[node.func.id]
-            if not minimum <= len(node.args) <= maximum:
-                raise ValueError
-            values = [visit(arg, depth + 1) for arg in node.args]
-            result = _number(function(*values))
-            if node.func.id == "exp" and result == 0:
                 raise ValueError
             return result
         raise ValueError

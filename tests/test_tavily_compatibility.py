@@ -42,7 +42,7 @@ async def tavily_api(hass, tavily_tool):
 
 
 @pytest.fixture
-def http_backend(release_source):
+def http_backend(release_source, release_version):
     """Simulate HTTP and cache only; execute original schemas and methods."""
     response = MagicMock(status=200)
     response.json = AsyncMock(
@@ -65,7 +65,9 @@ def http_backend(release_source):
     cache.get.return_value = None
     with (
         patch.object(
-            release_source("base_web_search"), "SQLiteCache", return_value=cache
+            release_source("base_web_search"),
+            "SQLiteCache" if release_version == "1.11.0" else "InMemoryCache",
+            return_value=cache,
         ),
         patch.object(
             release_source("tavily_search"),

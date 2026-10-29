@@ -28,13 +28,14 @@
           description: >-
             Required string array, never JSON numbers. expression needs exactly
             one string of at most 256 characters; min/max/avg need 1-32 numeric
-            strings, at most 64 characters each. Expressions allow finite numbers,
-            pi/E, + - * / // % ** ^, and sqrt, sin, cos, tan, exp, log, Abs, abs,
-            floor, ceiling, Min, Max. Trigonometry uses radians; log takes 1-2
-            arguments, Min/Max 2-8, other functions one. No variables, code,
-            attributes, indexing or quoted strings. At most 64 AST nodes and depth
+            strings, at most 64 characters each. Expressions allow finite numeric
+            literals, + - * / % **, unary signs and parentheses. Use ** for powers;
+            no ^, //, functions, named constants, variables, code, attributes,
+            indexing or quoted strings. At most 64 AST nodes and depth
             8; numbers/intermediates have absolute value at most 1e100 and, unless
-            zero, at least 1e-100; exponent absolute value at most 32. No default.
+            zero, at least 1e-100; exponent absolute value at most 32. For an
+            exponent greater than 1, the base absolute value is at most 1e6.
+            No default. These limits also apply with older Tools for Assist.
       required: [operation, data]
       additionalProperties: false
   function:

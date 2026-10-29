@@ -93,7 +93,14 @@ async def test_describe_native_dynamic_selector_without_playback_permission(
 
 @pytest.mark.parametrize("target", ["entity", "area", "device"])
 async def test_native_playback_targets_and_success_result(
-    hass, media_entry, media_api, admin_context, video_entities, playback, target
+    hass,
+    media_entry,
+    media_api,
+    admin_context,
+    video_entities,
+    playback,
+    target,
+    release_version,
 ):
     allow_playback(hass, media_entry)
     entity, device, area = video_entities[0]
@@ -103,6 +110,11 @@ async def test_native_playback_targets_and_success_result(
         else ({"area": area.name} if target == "area" else {"device_id": device.id})
     )
     response = await call(hass, "call_tool", admin_context, args)
+    if target == "device" and release_version == "1.11.1":
+        assert response["error_code"] == "invalid_args"
+        assert response["outcome_unknown"] is False
+        assert playback == []
+        return
     assert response["success"] is True, response
     assert response["result"]["success"] is True
     assert response["outcome_unknown"] is False
@@ -196,6 +208,57 @@ async def test_timeout_after_native_service_dispatch_is_uncertain(
     assert response["error_code"] == "timeout"
     assert response["outcome_unknown"] is True
     assert count == 1
+
+
+@pytest.mark.parametrize("release_version", ["1.11.1"], indirect=True)
+@pytest.mark.parametrize("target", ["entity", "area", "default"])
+async def test_unexposed_players_are_excluded_from_every_target_path(
+    hass, media_entry, media_api, admin_context, video_entities, playback, target
+):
+    from homeassistant.components.homeassistant.exposed_entities import (
+        async_expose_entity,
+    )
+
+    allow_playback(hass, media_entry)
+    entity, _, area = video_entities[0]
+    async_expose_entity(hass, "conversation", entity.entity_id, False)
+    metadata = await call(hass, "describe_tool", admin_context)
+    choices = metadata["tool"]["parameters"]["properties"]["entity_id"]["items"]["enum"]
+    assert entity.entity_id not in choices
+    assert video_entities[1][0].entity_id in choices
+    assert "device_id" not in metadata["tool"]["parameters"]["properties"]
+    args = (
+        {"entity_id": [entity.entity_id]}
+        if target == "entity"
+        else {"area": area.name}
+        if target == "area"
+        else {}
+    )
+    response = await call(hass, "call_tool", admin_context, args)
+    if target == "default":
+        assert response["success"] is True
+        assert [c.data["entity_id"] for c in playback] == [
+            [video_entities[1][0].entity_id]
+        ]
+    else:
+        assert response["success"] is False
+        assert playback == []
+
+
+@pytest.mark.parametrize("release_version", ["1.11.1"], indirect=True)
+async def test_no_exposed_players_fails_without_using_placeholder_or_service(
+    hass, media_entry, media_api, admin_context, video_entities, playback
+):
+    from homeassistant.components.homeassistant.exposed_entities import (
+        async_expose_entity,
+    )
+
+    allow_playback(hass, media_entry)
+    for entity, _, _ in video_entities:
+        async_expose_entity(hass, "conversation", entity.entity_id, False)
+    response = await call(hass, "call_tool", admin_context)
+    assert response["success"] is False
+    assert playback == []
 
 
 async def test_native_playback_receives_original_admin_llm_context(

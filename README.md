@@ -1,6 +1,8 @@
 # EOAIC2 Tools Bridge
 
-让 EOAIC2 通过 Home Assistant 公开 LLM API 使用 Tools for Assist 的搜索、天气、地点/路线、计算器、实用工具和媒体播放，并提供独立的高德地点、地址解析与路线工具。当前版本 **v0.8.1**，HA 自动化测试基准 **2026.10.2**，Tools for Assist 固定核对版本 **1.11.0**。
+让 EOAIC2 通过 Home Assistant 公开 LLM API 使用 Tools for Assist 的搜索、天气、地点/路线、计算器、实用工具和媒体播放，并提供独立的高德地点、地址解析与路线工具。当前版本 **v0.8.2**，HA 自动化测试基准 **2026.10.4**，Tools for Assist 固定核对版本 **1.11.1**，保留 1.11.0 回归。
+
+**v0.8.2 上游适配：**计算器统一使用数字算术语法，幂写作 `**`，不再接受函数、命名常量、`^` 或 `//`；播放 Function 移除上游 1.11.1 已删除的 `device_id`，用 `entity_id` 数组或 `area` 选择已暴露给 Assist 的播放器。请手动替换这两份 Functions，详见 [1.11.1 兼容与迁移](docs/TOOLS_FOR_ASSIST_1_11_1.md)。
 
 **v0.7.0 接口变更：独立的 `eoai_tools_bridge.search_web` 已移除，所有工具统一经 `call_tool` 执行。** Tools for Assist 的 `llm_intents/search_web` 继续支持。升级须替换旧搜索动作/Functions、明确授权搜索并改读 `result.results`，详见 [迁移说明](docs/MIGRATION_0_7.md)。既有白名单及副作用许可不会自动扩大。
 
@@ -101,7 +103,7 @@ eoai_tools_bridge_amap/geocode
         response_variable: _function_result
 ```
 
-所有示例使用整体 `data` 模板，保持 `"123"` 等字符串、整数和数组的原类型；可选字段只有提供时才透传，上游负责应用默认值，不在模板中强制转换或填 `null`。播放的 `device_id` 同名 HA 模板函数已排除，省略目标时不会把函数对象当成设备 ID。具体限制及动态播放器枚举见指南。
+所有示例使用整体 `data` 模板，保持 `"123"` 等字符串、整数和数组的原类型；可选字段只有提供时才透传，上游负责应用默认值，不在模板中强制转换或填 `null`。播放目标仅暴露 `entity_id` 数组及 `area`，不传 `device_id`。具体限制及动态播放器枚举见指南。
 
 [call_allowed_tool](examples/eoaic2_call_tool.yaml) 仅为**可选高级方案**，适用于需要动态选择受信任工具身份的场景；普通使用直接选择上述独立 Function，不需要经它嵌套调用。可选增加 [只读目录](examples/eoaic2_list_tools.yaml)、[就绪检查](examples/eoaic2_check_tools.yaml) 和 [参数描述](examples/eoaic2_describe_tool.yaml)。手动配置独立 Functions 不改变 HACS 独立更新、白名单、原始管理员 Context 或副作用许可，集成不会自动注入/改写 EOAIC2。
 
@@ -168,7 +170,7 @@ v0.6.1 的裁剪逻辑保持原样：每段文本最多 2048 字符、每个容�
 
 当前非 Home Control 的上游清单为 4 个 API、10 个固定工具名、13 个实现，详见 [兼容清单及 1.0 门槛](docs/TOOLS_COMPATIBILITY.md)。只读审核与访问白名单分开；明确危险声明优先拒绝只读分类，旧 Home Control 历史分类仅保留兼容，不列入新支持承诺。
 
-`basic_utilities/calculate` 继续使用原版计算器；桥接在派发前限制数值表达式语法、长度、节点、深度、中间数值与幂指数。目录/描述包含 `bridge_constraints`，详见兼容清单。不能把任意 SymPy/Python 代码当作表达式。生产集成无 SymPy 依赖。
+`basic_utilities/calculate` 继续使用原版计算器；桥接只接受两版共有的数字、`+ - * / % **`、正负号及括号，并限制长度、节点、深度、中间数值与幂指数；指数大于 1 时底数绝对值不超过 `1e6`。目录/描述包含 `bridge_constraints`，详见兼容清单。1.11.1 原生 AST 计算在执行器线程运行，结果仍原样透传；生产集成无 SymPy 依赖，开发依赖仅用于旧版回归。
 
 `media_services/play_video` 继续要求副作用许可、上游启用 YouTube 及适用视频播放器；先用 `describe_tool` 读取当前动态参数，再选择实体/区域/设备。上游未把用户 Context 传给下游 HA 播放服务的已知限制保留，不能宣称身份贯穿下游。示例：[查询](examples/query_tools_actions.yaml)、[计算器](examples/calculator_action.yaml)、[播放](examples/play_video_action.yaml)。
 
@@ -184,7 +186,7 @@ uv run --no-sync pytest -q --timeout=30
 uv run --no-sync python scripts/build_release.py
 ```
 
-开发/CI 固定 HA Core 2026.10.2、配套测试插件 0.13.373。测试下载并校验固定 SHA-256 的 EOAIC2 4 个文件与 Tools for Assist 两套 20/22 个文件，仅在忽略缓存中使用，不打包。pytest 禁止网络，使用真实 HA 注册/认证/Schema/Script 及未修改的原版工具代码，提供商与设备使用模拟后端。源码依据见 [UPSTREAM.md](docs/UPSTREAM.md)。
+开发/CI 固定 HA Core 2026.10.4、配套测试插件 0.13.375。测试下载并校验固定 SHA-256 的 EOAIC2 4 个文件与 Tools for Assist 三套 20/22/22 个文件，仅在忽略缓存中使用，不打包；1.11.0 与 1.11.1 的原版发布契约分别回归。pytest 禁止网络，使用真实 HA 注册/认证/Schema/Script 及未修改的原版工具代码，提供商与设备使用模拟后端。源码依据见 [UPSTREAM.md](docs/UPSTREAM.md)。
 
 用户报告 v0.7.2 总体验收通过，未补写逐项提供商或物理设备证据。各版本自动化、独立高德 HTTP 验证与真实用户环境验收分开记录在 [TESTING.md](docs/TESTING.md)。v0.8.1 收窄高德路线能力，已删除的两项不再作为后续验收门槛；真实联调和其他未完成门槛继续按既定 0.x 路线推进，不直接跳至 1.0。
 

@@ -1,6 +1,6 @@
 [project]
 name = "eoai-tools-bridge"
-version = "0.8.1"
+version = "0.8.2"
 description = "Controlled Home Assistant LLM tool gateway and Amap tools for EOAIC2"
 requires-python = ">=3.14.2"
 
@@ -9,8 +9,8 @@ dev = [
   "gazetteer-matcher==1.1.0",
   "hassil==3.12.1",
   "home-assistant-intents==2026.10.6",
-  "homeassistant==2026.10.2",
-  "pytest-homeassistant-custom-component==0.13.373",
+  "homeassistant==2026.10.4",
+  "pytest-homeassistant-custom-component==0.13.375",
   "ruff==0.16.10",
   "sympy==1.14.0",
   "voluptuous==0.15.2",
